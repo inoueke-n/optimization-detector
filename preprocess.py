@@ -3,14 +3,29 @@ import math
 import os
 import random
 
-DATASET_NAME = "/home/davide/Desktop/flag_detection/dataset"
+DATASET_NAME = "/mnt/md0/flag_detection/dataset"
 PREFIX = "BCCFLD_"
-X0_FOLDER = "lfs-gcc-O0"
-X1_FOLDER = "lfs-gcc-O2"
+X0_FOLDER = "lfs-clang-O0"
+X1_FOLDER = "lfs-clang-O2"
 FUNCTION_GRAINED_PREFIX = "-func"
 EXECUTABLE_GRAINED_PREFIX = "-whole"
-CHUNK_SIZE = 16384
+CHUNK_SIZE = 2048
 MIN_CHUNK_SIZE = 1
+
+
+def run_preprocess(input_dir: str, classes: str, model_dir: str):
+    # assert validity of classes
+    pass
+
+
+def write_dataset(model_dir, function_grained=True):
+    x0, x1 = read_and_clean(DIR, function_grained)
+    train, test = gen_train_test(x0, x1, function_grained, cut=0.7,
+                                 chunk_size=FEATURES)
+    write_binary(train, model_dir + "train.bin", function_grained,
+                 chunk_size=FEATURES)
+    write_binary(test, model_dir + "test.bin", function_grained,
+                 chunk_size=FEATURES)
 
 
 def gen_train_test(x0_data, x1_data, function_grained, cut=0.7,

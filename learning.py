@@ -2,8 +2,7 @@ from __future__ import print_function
 
 import numpy as np
 from tensorflow.keras import Sequential
-from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, \
-    TensorBoard
+from tensorflow.keras.callbacks import ModelCheckpoint, TensorBoard
 from tensorflow.keras.layers import Conv1D, MaxPooling1D, Embedding, LSTM, \
     Dense
 from tensorflow.keras.models import load_model
@@ -18,8 +17,8 @@ BATCH_SIZE = 32
 def generate_sequences(data):
     indices = list(range(0, len(data)))
     random.shuffle(indices)
-    x = list()
-    y = list()
+    x = []
+    y = []
     for i in indices:
         x.append(data[i]["x"])
         y.append(data[i]["y"])
