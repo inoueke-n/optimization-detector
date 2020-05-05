@@ -10,12 +10,18 @@ X1_FOLDER = "lfs-clang-O2"
 FUNCTION_GRAINED_PREFIX = "-func"
 EXECUTABLE_GRAINED_PREFIX = "-whole"
 CHUNK_SIZE = 2048
+BINARY_MAGIC = 0x38
 MIN_CHUNK_SIZE = 1
 
 
 def run_preprocess(input_dir: str, classes: str, model_dir: str):
     # assert validity of classes
-    pass
+    classes_int = []
+    for char in classes:
+        val = int(char)
+        if val != 0 and val != 1:
+            raise ValueError(f"Value in the expected classes is {classes} but only 0 and 1 are expected for a binary classifier.")
+        classes_int.append(val)
 
 
 def write_dataset(model_dir, function_grained=True):
@@ -70,7 +76,9 @@ def gen_train_test(x0_data, x1_data, function_grained, cut=0.7,
 
 
 def write_binary(data, filename, function_grained, chunk_size=CHUNK_SIZE):
-    """I like binary files """
+    """
+    
+    """
     if function_grained:
         with open(filename, mode='wb') as f:
             for function in data:
