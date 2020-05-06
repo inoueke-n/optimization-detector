@@ -2,13 +2,11 @@ import argparse
 import functools
 import sys
 
-from preprocess import run_preprocess
+from src.preprocess import run_preprocess
 
 DIR = "/mnt/md0/flag_detection"
-FEATURES = 2048
 
-
-class FlagDetectionTrainer():
+class FlagDetectionTrainer:
     def __init__(self):
         actions = ["preprocess", "train", "evaluate"]
         actions_desc = functools.reduce(lambda a, b: a + "\n\t" + b, actions)
@@ -19,38 +17,49 @@ class FlagDetectionTrainer():
                   f"are:\n\t{actions_desc}",
             add_help=False)
         parser.add_argument("action",
-                            choices=["preprocess", "merge", "train",
-                                     "evaluate"],
+                            choices=["preprocess", "train", "evaluate"],
                             help="The action that should be performed.")
         args = parser.parse_args(sys.argv[1:2])
         # dispatch function with same name of the action
         getattr(self, args.action)(sys.argv[2:])
 
-    def preprocess(self, args):
+    @staticmethod
+    def preprocess(args):
         parser = argparse.ArgumentParser(
             description="Creates the train and test dataset from the "
                         "existing data",
-            usage=f"{sys.argv[0]} preprocess [-h] -i data_dir -c class -m "
-                  f"model_dir\n")
+            usage=f"{sys.argv[0]} preprocess [optional arguments] -i data_dir "
+                  f"-c "
+                  f"category -m model_dir\n")
         parser.add_argument("-i", "--input", required=True,
                             metavar="data_dir",
                             help="path to the folder containing the "
                                  "unprocessed data")
-        parser.add_argument("-c", "--classes", required=True, metavar="string",
-                            help="a string of 0s and 1s representing the "
-                                 "output class for this data")
+        parser.add_argument("-F", "--function", required=False,
+                            choices=["true", "false"],
+                            help="Enables the function grained analysis")
+        parser.add_argument("-f", "--features", default=2048,
+                            help="Number of features used in the evaluation, defaults to 2048")
+        parser.add_argument("-c", "--category", required=True, metavar="int",
+                            help="a number representing the "
+                                 "category label for this data")
+        parser.add_argument("-s", "--split", default=0.7,
+                            help="The proportion between train data and test data")
         parser.add_argument("-m", "--model", metavar="model_dir",
                             required=True,
                             help="path to the folder that will contain the "
                                  "model. If an existing dataset is found, "
                                  "it will be merged with this one")
         parsed_args = parser.parse_args(args)
-        run_preprocess(parsed_args.input, parsed_args.classes,
-                       parsed_args.model)
+        run_preprocess(parsed_args.input, parsed_args.category,
+                       parsed_args.model, parsed_args.function,
+                       parsed_args.features, parsed_args.split)
 
+    @staticmethod
     def train(self):
         pass
 
+    @staticmethod
     def evaluate(self):
         pass
 

@@ -14,7 +14,8 @@ class TestBinaryDs(TestCase):
     data_fun: List[bytes] = [
         b"\xFF",
         b"\xC0\x9C\x2E\x21\xFC\xC7\xDC\x94\x95\x35\xEA",
-        b"\x89\x5E\xCB\xFB\x78\xA2\x78\x46\x16\x3D\xD7\xC6\xA4\x62\xC2\xE1\x3E\x5F\xAD\xC4\x8E"
+        b"\x89\x5E\xCB\xFB\x78\xA2\x78\x46\x16\x3D\xD7\xC6\xA4\x62\xC2\xE1\x3E"
+        b"\x5F\xAD\xC4\x8E"
     ]
     data_raw: List[bytes] = [
         b"\x93\xE7\x32\x89\x1B\x08\x01\x65\x31\xA6\x64\x18\x3B\xA2\xA1\x32",
@@ -45,11 +46,8 @@ class TestBinaryDs(TestCase):
     def test_create_empty(self):
         file = os.path.join(self.tmpdir, "create_empty.bin")
         binary = BinaryDs(file)
-        try:
+        with self.assertRaises(FileNotFoundError):
             binary.read()
-            binary.write()
-        except FileNotFoundError:
-            self.fail("test_create_empty should not raise FileNotFoundError")
 
     # try to create an empty file by overwriting an existing one. Assert that
     # IOError is raised and the original file is unmodified
@@ -83,7 +81,8 @@ class TestBinaryDs(TestCase):
         try:
             binary.set(0, self.data_raw)
         except AssertionError:
-            self.fail("test_wrong_number_features_fun should not raise AssertionError")
+            self.fail(
+                "test_wrong_number_features_fun should not raise AssertionError")
         binary.set_features(8)
         with self.assertRaises(AssertionError):
             binary.set(0, self.data_raw)
@@ -98,6 +97,17 @@ class TestBinaryDs(TestCase):
         binary.set_features(8)
         new_data = binary.get(0)
         self.assertEqual(len(new_data), 0)
+
+    # assert that for empty objects the minimum number of examples is zero.
+    # then load some data and assert again the correct number
+    def test_minimum_number_samples(self):
+        file = os.path.join(self.tmpdir, "change_feature_number.bin")
+        binary = BinaryDs(file)
+        self.assertEqual(binary.min_examples(), 0)
+        binary.set_features(16)
+        binary.set(0, self.data_raw)
+        binary.set(2, self.data_raw2)
+        self.assertEqual(binary.min_examples(), 3)
 
     # Write a function granularity file. Then read it. Assert the content is ok
     def test_read_write_fun(self):
@@ -144,3 +154,36 @@ class TestBinaryDs(TestCase):
         self.assertEqual(binary.get(1), [])
         self.assertEqual(binary.get(2), [])
         self.assertEqual(binary.get(3), self.data_raw2)
+
+    # add unbalanced classes. Assert their samples number are not the same.
+    # call rebalance and assert that the samples are now correct and the extra
+    # ones are discarded
+    def test_rebalance_no_tests(self):
+        file_train = os.path.join(self.tmpdir, "rebalance.bin")
+        train = BinaryDs(file_train)
+        train.set_features(16)
+        train.set(0, self.data_raw)
+        train.set(1, self.data_raw2)
+        self.assertNotEqual(len(train.get(0)), len(train.get(1)))
+        train.rebalance(None)
+        self.assertEqual(len(train.get(0)), len(train.get(1)))
+
+    # add unbalanced classes. Assert their samples number are not the same.
+    # call rebalance and assert that the samples are correct and the extra ones
+    # are put in the test dataset
+    def test_rebalance_with_tests(self):
+        file_train = os.path.join(self.tmpdir, "rebalance_train.bin")
+        file_test = os.path.join(self.tmpdir, "rebalance_test.bin")
+        train = BinaryDs(file_train)
+        test = BinaryDs(file_test)
+        train.set_features(16)
+        test.set_features(16)
+        train.set(0, self.data_raw)
+        train.set(1, self.data_raw2)
+        test.set(0, [b"\xfd\xd7\x62\x42\x2a\x84\x63\xc4\x91\x44\xac\xb0\x24\x4b\x06\x8d"])
+        test.set(1, [b"\x15\x66\x41\xfe\xa4\x92\x7a\xed\x7a\xdf\xab\x8d\xc8\x91\x03\xb0"])
+        self.assertNotEqual(len(train.get(0)), len(train.get(1)))
+        train.rebalance(test)
+        self.assertEqual(len(train.get(0)), len(train.get(1)))
+        self.assertEqual(len(test.get(0)), 1)
+        self.assertEqual(len(test.get(1)), 6)

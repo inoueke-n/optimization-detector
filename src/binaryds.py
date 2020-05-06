@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import itertools
 from io import BufferedReader, BufferedWriter
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 
 class BinaryDs:
@@ -39,21 +41,19 @@ class BinaryDs:
     def read(self) -> None:
         """
         Read the binary file set in the constructor and load its content into the object.
-        If the file is not found nothing happens and the default settings are used.
+        If the file is not found a FileNotFound error is raised
         """
         self.__init__(self.path)
-        try:
-            with open(self.path, "rb") as f:
-                if int.from_bytes(f.read(1), byteorder="big") != self.magic:
-                    raise IOError(f"File {self.path} was not created by this application.")
-                self.function = int.from_bytes(f.read(1), byteorder="big")
-                self.features = int.from_bytes(f.read(2), byteorder="big")
-                self.categories = int.from_bytes(f.read(2), byteorder="big")
-                chunks_no = int.from_bytes(f.read(2), byteorder="big")
-                for _ in range(0, chunks_no):
-                    self.__read_chunk(f)
-        except FileNotFoundError:
-            pass  # no problem, just create the file later while saving
+        with open(self.path, "rb") as f:
+            if int.from_bytes(f.read(1), byteorder="big") != self.magic:
+                raise IOError(
+                    f"File {self.path} was not created by this application.")
+            self.function = int.from_bytes(f.read(1), byteorder="big")
+            self.features = int.from_bytes(f.read(2), byteorder="big")
+            self.categories = int.from_bytes(f.read(2), byteorder="big")
+            chunks_no = int.from_bytes(f.read(2), byteorder="big")
+            for _ in range(0, chunks_no):
+                self.__read_chunk(f)
 
     # read a chunk from the file representing a specific category
     def __read_chunk(self, file: BufferedReader) -> None:
@@ -62,9 +62,11 @@ class BinaryDs:
         data = file.read(chunk_size)
         if self.function:
             data = data.split(b"\x0F\x04")
-            data = list(filter(lambda x: x, data))  # remove eventual empty elements resulting from split
+            # remove eventual empty elements resulting from split
+            data = list(filter(lambda x: x, data))
         else:
-            data = [data[i:i + self.features] for i in range(0, len(data), self.features)]
+            data = [data[i:i + self.features] for i in
+                    range(0, len(data), self.features)]
         self.data[chunk_id] = data
 
     def write(self) -> None:
@@ -155,7 +157,7 @@ class BinaryDs:
 
         Returns
         ------
-        int : The number of features
+        int: The number of features
         """
         return self.features
 
@@ -177,7 +179,7 @@ class BinaryDs:
 
         Parameters
         ---------
-        val : bool
+        val: bool
             True if `function` granularity should be used, False otherwise
         """
         self.function = val
@@ -190,6 +192,43 @@ class BinaryDs:
 
         Returns
         ------
-        bool : True if the granularity is set to `function`, False otherwise
+        bool: True if the granularity is set to `function`, False otherwise
         """
         return self.function
+
+    def min_examples(self) -> int:
+        """
+        Returns the minimum number of examples contained in a category, 0 if
+        no category has been added yet
+
+        Returns
+        -------
+        int: The lowest number of examples between all the categories added to
+        this object
+        """
+        min_value = 9223372036854775807
+        changed = False
+        for key in self.data:
+            if len(self.data[key]) < min_value:
+                min_value = len(self.data[key])
+                changed = True
+        if changed:
+            return min_value
+        else:
+            return 0
+
+    def rebalance(self, target: Optional[BinaryDs]) -> None:
+        """
+        Balance all the examples in the object. If target is not None, extra
+        examples will be put in that object, otherwise they will be thrown away
+        """
+        min = self.min_examples()
+        for key in self.data:
+            if len(self.data[key]) > min:
+                first = self.data[key][:min]
+                second = self.data[key][min:]
+                self.data[key] = first
+                if target:
+                    target_data = target.get(key)
+                    target_data.extend(second)
+                    target.set(key, target_data)
