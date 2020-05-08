@@ -1,4 +1,3 @@
-import itertools
 import math
 import os
 import random
@@ -29,24 +28,30 @@ def run_preprocess(input_dir: str, category: int, model_dir: str,
     split: float
         The ratio training examples over total examples
     """
+    assert (os.path.exists(model_dir))
     train = BinaryDs(os.path.join(model_dir, "train.bin"))
     test = BinaryDs(os.path.join(model_dir, "test.bin"))
     files = gather_files(input_dir, function)
     read_dataset(train, function, features)
     read_dataset(test, function, features)
-    data = read_and_clean_content(files, function)
+    data = read_and_clean_content(files, function, features)
+    # Re-mix train and test for accurate duplicates elimination
+    # most times this will return just [].
+    old_data = train.get(category)
+    old_data.extend(test.get(category))
+    data.extend(old_data)
+    del old_data
+    # now shuffle, remove duplicates and split into train and test
     random.shuffle(data)
+    data = list(set(data))
     split_index = math.floor(len(data) * split)
     new_train_data = data[:split_index]
     new_test_data = data[split_index:]
-    # most times this will return just []
-    current_train_data = train.get(category)
-    current_test_data = test.get(category)
-    current_train_data.extend(new_train_data)
-    current_test_data.extend(new_test_data)
-    train.set(category, current_train_data)
-    test.set(category, current_test_data)
+    train.set(category, new_train_data)
+    test.set(category, new_test_data)
     train.rebalance(test)
+    train.write()
+    test.write()
 
 
 def read_dataset(dataset: BinaryDs, function: bool, features: int) -> None:
@@ -104,9 +109,13 @@ def read_and_clean_content(files: List[str], function: bool,
     else:
         x = read_files_raw(files)
         # split in chunks of "features" length
-        x = [x[i:i + features] for i in range(0, len(x), features)]
-        # flatten
-        x = list(itertools.chain.from_iterable(x))
+        chunked = []
+        for el in x:
+            chunked.extend([el[j:j + features]
+                            for j in range(0, len(el), features)])
+        # drop elements different from features size
+        x = list(filter(lambda l: len(l) == features, chunked))
+        del chunked
     return x
 
 
@@ -150,8 +159,8 @@ def gather_files(path: str, function: bool) -> List[str]:
                 or .bin extension (based on the function parameter)
     """
     files = list()
-    for _, _, files in os.walk(path):
-        for cur_file in files:
+    for _, _, found in os.walk(path):
+        for cur_file in found:
             cur_abs = os.path.join(path, cur_file)
             files.append(cur_abs)
     if function:

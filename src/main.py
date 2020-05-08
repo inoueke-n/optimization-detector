@@ -6,6 +6,7 @@ from src.preprocess import run_preprocess
 
 DIR = "/mnt/md0/flag_detection"
 
+
 class FlagDetectionTrainer:
     def __init__(self):
         actions = ["preprocess", "train", "evaluate"]
@@ -51,9 +52,9 @@ class FlagDetectionTrainer:
                                  "model. If an existing dataset is found, "
                                  "it will be merged with this one")
         parsed_args = parser.parse_args(args)
-        run_preprocess(parsed_args.input, parsed_args.category,
-                       parsed_args.model, parsed_args.function,
-                       parsed_args.features, parsed_args.split)
+        run_preprocess(parsed_args.input, int(parsed_args.category),
+                       parsed_args.model, bool(parsed_args.function),
+                       int(parsed_args.features), float(parsed_args.split))
 
     @staticmethod
     def train(self):
