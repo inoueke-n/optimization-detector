@@ -1,20 +1,22 @@
 from __future__ import annotations
 
 import itertools
-from io import BufferedReader, BufferedWriter
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, BinaryIO
 
 
 class BinaryDs:
     """
-    Class used to contain a dataset in a binary form, where each example belongs to a given category.
+    Class used to contain a dataset in a binary form, where each example belongs
+     to a given category.
 
     File structure of the binary:
     1 bytes -> magic (0x26)
     1 bytes -> 0: function grained, 1: raw data grained
     2 bytes -> number of features
-    2 bytes -> number of predicted categories (The maximum number appearing in the dictionary)
-    2 bytes -> number of chunks (The actual number of categories contained in the dictionary)
+    2 bytes -> number of predicted categories (The maximum number appearing in
+               the dictionary)
+    2 bytes -> number of chunks (The actual number of categories contained in
+               the dictionary)
     ----- FOR EACH CHUNK ----
     2 bytes -> category id
     8 bytes -> size of the chunk in bytes (excluding these 10 bytes)
@@ -56,7 +58,7 @@ class BinaryDs:
                 self.__read_chunk(f)
 
     # read a chunk from the file representing a specific category
-    def __read_chunk(self, file: BufferedReader) -> None:
+    def __read_chunk(self, file: BinaryIO) -> None:
         chunk_id = int.from_bytes(file.read(2), byteorder="big")
         chunk_size = int.from_bytes(file.read(8), byteorder="big")
         data = file.read(chunk_size)
@@ -84,7 +86,7 @@ class BinaryDs:
                 self.__write_chunk(key, f)
 
     # Write a single category to file
-    def __write_chunk(self, chunk_id: int, file: BufferedWriter) -> None:
+    def __write_chunk(self, chunk_id: int, file: BinaryIO) -> None:
         samples = self.data[chunk_id]
         if samples:
             if self.function:

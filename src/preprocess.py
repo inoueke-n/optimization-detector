@@ -31,27 +31,35 @@ def run_preprocess(input_dir: str, category: int, model_dir: str,
     assert (os.path.exists(model_dir))
     train = BinaryDs(os.path.join(model_dir, "train.bin"))
     test = BinaryDs(os.path.join(model_dir, "test.bin"))
+    validate = BinaryDs(os.path.join(model_dir, "validate.bin"))
     files = gather_files(input_dir, function)
     read_dataset(train, function, features)
     read_dataset(test, function, features)
+    read_dataset(validate, function, features)
     data = read_and_clean_content(files, function, features)
     # Re-mix train and test for accurate duplicates elimination
     # most times this will return just [].
     old_data = train.get(category)
     old_data.extend(test.get(category))
+    old_data.extend(validate.get(category))
     data.extend(old_data)
     del old_data
-    # now shuffle, remove duplicates and split into train and test
+    # now shuffle, remove duplicates and split into train, test validation
     random.shuffle(data)
     data = list(set(data))
     split_index = math.floor(len(data) * split)
     new_train_data = data[:split_index]
-    new_test_data = data[split_index:]
+    data = data[split_index:]
+    split_index = math.floor(len(data) * split)
+    new_test_data = data[:split_index]
+    new_validation_data = data[split_index:]
     train.set(category, new_train_data)
     test.set(category, new_test_data)
-    train.rebalance(test)
+    validate.set(category, new_validation_data)
+    train.rebalance(test)  # put extra data into test only
     train.write()
     test.write()
+    validate.write()
 
 
 def read_dataset(dataset: BinaryDs, function: bool, features: int) -> None:
@@ -127,7 +135,7 @@ def encode_opcodes(func_list: List[str]) -> List[bytes]:
     Parameters
     ---------
     func_list: List[str]
-        The list of opcodes in the form ["DE,AD,C0,DE,01"]. No spaces or
+        The list of opcodes in the form ["DEADC0DE01"]. No spaces, commas or
         single digits allowed (i.e. write 01 instead of 1).
 
     Returns
@@ -135,7 +143,6 @@ def encode_opcodes(func_list: List[str]) -> List[bytes]:
     List[bytes]: A list of bytes where each element is an example in the
                  category
     """
-    func_list = list(map(lambda x: x.replace(",", ""), func_list))
     func_list = list(map(bytes.fromhex, func_list))
     return func_list
 
