@@ -171,7 +171,10 @@ class BinaryDs:
         -------
         int: The highest category_id expected
         """
-        return self.categories
+        if self.data:
+            return self.categories+1
+        else:
+            return 0
 
     def set_function_granularity(self, val: bool) -> None:
         """
