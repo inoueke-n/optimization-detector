@@ -42,8 +42,8 @@ class BinaryDs:
 
     def read(self) -> None:
         """
-        Read the binary file set in the constructor and load its content into the object.
-        If the file is not found a FileNotFound error is raised
+        Read the binary file set in the constructor and load its content into
+        the object. If the file is not found a FileNotFound error is raised
         """
         self.__init__(self.path)
         with open(self.path, "rb") as f:
@@ -98,7 +98,8 @@ class BinaryDs:
 
     def get(self, cat_id: int) -> List[bytes]:
         """
-        Returns a category contained inside this object, identified by a specific id
+        Returns a category contained inside this object, identified by a
+        specific id
             
         Parameters
         ----------
@@ -131,18 +132,21 @@ class BinaryDs:
     def __check_consistency(self, data: List[bytes]) -> None:
         if self.function:
             for element in data:
-                assert len(
-                    element) <= self.features, f"Expected {self.features} features, but {len(element)} were provided"
+                assert len(element) <= self.features, \
+                    f"Expected {self.features} features, but {len(element)} " \
+                    f"were provided"
         else:
             for element in data:
-                assert len(
-                    element) == self.features, f"Expected {self.features} features, but {len(element)} were provided"
+                assert len(element) == self.features, \
+                    f"Expected {self.features} features, but {len(element)} " \
+                    f"were provided"
 
     def set_features(self, val: int) -> None:
         """
-        Set the number of features of the examples. This will discard all the examples previously loaded.
-        Note that for `raw` granularity all the examples MUST have this size. For `func` granularity this is the maximum
-        length allowed
+        Set the number of features of the examples. This will discard all the
+        examples previously loaded.
+        Note that for `raw` granularity all the examples MUST have this size.
+        For `func` granularity this is the maximum length allowed
 
         Parameters
         ---------
@@ -165,20 +169,22 @@ class BinaryDs:
 
     def get_categories(self) -> int:
         """
-        Get the highest id of any categories found inside the examples in this object
+        Get the highest id of any categories found inside the examples in this
+        object
 
         Returns
         -------
         int: The highest category_id expected
         """
         if self.data:
-            return self.categories+1
+            return self.categories + 1
         else:
             return 0
 
     def set_function_granularity(self, val: bool) -> None:
         """
-        Set the granularity of the current examples. True for `function`, False for `raw`. Note that this will discard
+        Set the granularity of the current examples. True for `function`,
+        False for `raw`. Note that this will discard
         all previously loaded examples.
         The default value for this is False
 

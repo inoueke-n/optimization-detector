@@ -2,6 +2,7 @@ from __future__ import print_function
 
 import os
 import time
+from typing import Union
 
 import numpy as np
 from tensorflow.keras import Sequential
@@ -10,13 +11,15 @@ from tensorflow.keras.layers import Conv1D, MaxPooling1D, Embedding, LSTM
 from tensorflow.keras.layers import Dense, Dropout
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import sequence
-from tensorflow.python import confusion_matrix
+from tensorflow.python import confusion_matrix, Any, SparseAdd, SparseTensor
 from tensorflow_core.python.keras.callbacks import EarlyStopping
 
 from src.binaryds import BinaryDs
 
+MODEL_NAME = "model.h5"
 
-def run_train(model_dir: str, seed: int):
+
+def run_train(model_dir: str, seed: int) -> None:
     if seed == 0:
         seed = int(time.time())
     assert os.path.exists(model_dir), "Model directory does not exists!"
@@ -26,7 +29,9 @@ def run_train(model_dir: str, seed: int):
     assert os.path.exists(validate_bin), "Validation dataset does not exists!"
     train = BinaryDs(train_bin)
     validate = BinaryDs(validate_bin)
-    model_path = os.path.join(model_dir, "model.h5")
+    train.read()
+    validate.read()
+    model_path = os.path.join(model_dir, MODEL_NAME)
     if os.path.exists(model_path):
         model = load_model(model_path)
         print("Loading previous model")
@@ -85,7 +90,7 @@ def generate_sequences(data: BinaryDs) -> (np.array, np.array):
     return x, y
 
 
-def binary_convolutional_LSTM(pad_length: int):
+def binary_convolutional_LSTM(pad_length: int) -> Sequential:
     embedding_size = 256
     embedding_length = 64
     model = Sequential()
@@ -102,7 +107,7 @@ def binary_convolutional_LSTM(pad_length: int):
     return model
 
 
-def multiclass_convolutional_LSTM(classes: int, pad_length: int):
+def multiclass_convolutional_LSTM(classes: int, pad_length: int) -> Sequential:
     embedding_size = 256
     embedding_length = 64
     model = Sequential()
@@ -119,7 +124,7 @@ def multiclass_convolutional_LSTM(classes: int, pad_length: int):
     return model
 
 
-def multiclass_dense_model(classes: int, pad_length: int):
+def multiclass_dense_model(classes: int, pad_length: int) -> Sequential:
     embedding_size = 256
     embedding_length = 64
     model = Sequential()
@@ -139,10 +144,62 @@ def multiclass_dense_model(classes: int, pad_length: int):
     return model
 
 
-def evaluate_nn(model_path, X_test, y_test, pad_length):
+def run_evaluation(model_dir: str, file: str, stop: int) -> None:
+    cut = 1
+    assert os.path.exists(model_dir), "Model directory does not exists!"
+    model_path = os.path.join(model_dir, MODEL_NAME)
+    output_path = os.path.join(model_dir, file)
+    test_bin = os.path.join(model_dir, "test.bin")
+    assert os.path.exists(test_bin), "Test dataset does not exists!"
+    test = BinaryDs(test_bin)
+    test.read()
+    function = test.get_function_granularity()
+    pad_len = test.get_categories()
+    x, y = generate_sequences(test)
+    while cut < stop:
+        print(f"Evaluating {cut}")
+        nx, ny = cut_dataset(x, y, function, cut)
+        matrix = evaluate_nn(model_path, nx, ny, pad_len)
+        matrix = np.asarray(matrix)
+        with open(output_path, "a") as f:
+            f.write(str(cut) + ",")
+            f.write(str(matrix[0][0]) + ",")
+            f.write(str(matrix[0][1]) + ",")
+            f.write(str(matrix[1][0]) + ",")
+            f.write(str(matrix[1][1]) + "\n")
+        if cut < 25:  # more accurate evaluation where required
+            cut = cut + 1
+        elif cut < 80:
+            cut = cut + 5
+        elif cut < 256:
+            cut = cut + 25
+        else:
+            cut = cut + 50
+
+
+def cut_dataset(x: np.array, y: np.array,
+                function: bool, cut: int) -> (np.array, np.array):
+    if function:
+        nx = []
+        ny = []
+        for i in range(0, len(x)):
+            if len(x[i]) <= cut:
+                nx.append(x[i])
+                ny.append(y[i])
+        return np.asarray(nx), np.asarray(ny)
+
+    else:
+        nx = np.array(x.shape)
+        for i in range(0, len(x)):
+            nx[i] = x[i][:cut]
+        return nx, y
+
+
+def evaluate_nn(model_path: str, x_test: np.array, y_test: np.array,
+                pad_length: int) -> Union[Union[SparseTensor, SparseAdd], Any]:
     model = load_model(model_path)
     yhat_classes = model.predict_classes(
-        sequence.pad_sequences(X_test, maxlen=pad_length), verbose=1)
+        sequence.pad_sequences(x_test, maxlen=pad_length), verbose=1)
     yhat_classes = yhat_classes[:, 0]
     matrix = confusion_matrix(y_test, yhat_classes)
     print(matrix)
