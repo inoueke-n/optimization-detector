@@ -2,7 +2,6 @@ from __future__ import print_function
 
 import os
 import time
-from typing import Union
 
 import numpy as np
 from tensorflow.keras import Sequential
@@ -11,7 +10,7 @@ from tensorflow.keras.layers import Conv1D, MaxPooling1D, Embedding, LSTM
 from tensorflow.keras.layers import Dense, Dropout
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import sequence
-from tensorflow.python import confusion_matrix, Any, SparseAdd, SparseTensor
+from tensorflow.python import confusion_matrix
 from tensorflow_core.python.keras.callbacks import EarlyStopping
 
 from src.binaryds import BinaryDs
@@ -44,8 +43,12 @@ def run_train(model_dir: str, seed: int) -> None:
     np.random.seed(seed)
     x_train, y_train = generate_sequences(train)
     x_val, y_val = generate_sequences(validate)
-    x_train = sequence.pad_sequences(x_train, maxlen=train.features)
-    x_val = sequence.pad_sequences(x_val, maxlen=validate.features)
+    x_train = sequence.pad_sequences(x_train, maxlen=train.features,
+                                     padding="post", truncating="post",
+                                     value=0x0E)
+    x_val = sequence.pad_sequences(x_val, maxlen=validate.features,
+                                   padding="post", truncating="post",
+                                   value=0x0E)
 
     checkpoint = ModelCheckpoint(filepath=model_path,
                                  verbose=1,
@@ -72,14 +75,22 @@ def run_train(model_dir: str, seed: int) -> None:
 def generate_sequences(data: BinaryDs) -> (np.array, np.array):
     x = []
     y = []  # using lists since I don't know the final size beforehand
-    for i in range(0, data.get_categories()):
+    cat_no = data.get_categories()
+    for i in range(0, cat_no):
         samples = data.get(i)
         if samples:
-            expected = [0.0] * data.get_categories()
-            expected[i] = 1.0
-            expected = expected * len(samples)
-            y.extend(expected)
-            x.extend(samples)
+            # multiclass, generate array with prediction for each class
+            if cat_no > 2:
+                expected = [0.0] * data.get_categories()
+                expected[i] = 1.0
+                expected = [expected for _ in range(0, len(samples))]
+                y.extend(expected)
+            # binary, single value 0 or 1 is sufficient
+            else:
+                expected = [i] * len(samples)
+                y.extend(expected)
+            # keras does not like bytearrays, so int list then
+            x.extend([list(sample) for sample in samples])
     x = np.array(x)
     y = np.array(y)
     assert len(x) == len(y), "Something went wrong... different X and y len"
@@ -196,7 +207,7 @@ def cut_dataset(x: np.array, y: np.array,
 
 
 def evaluate_nn(model_path: str, x_test: np.array, y_test: np.array,
-                pad_length: int) -> Union[Union[SparseTensor, SparseAdd], Any]:
+                pad_length: int):
     model = load_model(model_path)
     yhat_classes = model.predict_classes(
         sequence.pad_sequences(x_test, maxlen=pad_length), verbose=1)

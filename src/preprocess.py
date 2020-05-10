@@ -62,6 +62,40 @@ def run_preprocess(input_dir: str, category: int, model_dir: str,
     validate.write()
 
 
+def run_summary(model_dir: str) -> None:
+    assert (os.path.exists(model_dir))
+    train_bin = os.path.join(model_dir, "train.bin")
+    test_bin = os.path.join(model_dir, "test.bin")
+    validate_bin = os.path.join(model_dir, "validate.bin")
+    train = BinaryDs(train_bin)
+    assert os.path.exists(train_bin), "Train dataset does not exists!"
+    test = BinaryDs(test_bin)
+    assert os.path.exists(test_bin), "Test dataset does not exists!"
+    val = BinaryDs(validate_bin)
+    assert os.path.exists(validate_bin), "Validation dataset does not exists!"
+    train.read()
+    test.read()
+    val.read()
+    print(f"Number of classes: {train.get_categories()}")
+    if train.get_function_granularity():
+        assert test.get_function_granularity()
+        assert val.get_function_granularity()
+        print("Type: function-based")
+    else:
+        assert not test.get_function_granularity()
+        assert not val.get_function_granularity()
+        print("Type: raw values")
+    print("--------------------")
+    for i in range(0, train.get_categories()):
+        print(f"Training examples for class {i}: {len(train.get(i))}")
+    assert test.get_categories() == train.get_categories()
+    for i in range(0, train.get_categories()):
+        print(f"Testing examples for class {i}: {len(test.get(i))}")
+    assert val.get_categories() == train.get_categories()
+    for i in range(0, train.get_categories()):
+        print(f"Validation examples for class {i}: {len(val.get(i))}")
+
+
 def read_dataset(dataset: BinaryDs, function: bool, features: int) -> None:
     """
     Read the dataset and assert that is compatible with the requested
