@@ -7,7 +7,7 @@ import numpy as np
 from tensorflow.keras import Sequential
 from tensorflow.keras.callbacks import ModelCheckpoint, TensorBoard
 from tensorflow.keras.layers import Conv1D, MaxPooling1D, Embedding, LSTM
-from tensorflow.keras.layers import Dense, Dropout
+from tensorflow.keras.layers import Dense, Flatten
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import sequence
 from tensorflow.python import confusion_matrix
@@ -37,8 +37,8 @@ def run_train(model_dir: str, seed: int) -> None:
     elif train.get_categories() <= 2:
         model = binary_convolutional_LSTM(train.features)
     else:
-        model = multiclass_convolutional_LSTM(train.get_categories(),
-                                              train.features)
+        model = multiclass_cnn_model(train.get_categories(),
+                                     train.features)
     print(model.summary())
     np.random.seed(seed)
     x_train, y_train = generate_sequences(train)
@@ -64,10 +64,10 @@ def run_train(model_dir: str, seed: int) -> None:
                              embeddings_freq=1)
     early_stopper = EarlyStopping(monitor="val_loss",
                                   min_delta=0.001,
-                                  patience=0,
+                                  patience=3,
                                   mode="auto")
 
-    model.fit(x_train, y_train, epochs=10, batch_size=256,
+    model.fit(x_train, y_train, epochs=40, batch_size=256,
               validation_data=(x_val, y_val),
               callbacks=[tensorboad, checkpoint, early_stopper])
 
@@ -135,19 +135,23 @@ def multiclass_convolutional_LSTM(classes: int, pad_length: int) -> Sequential:
     return model
 
 
-def multiclass_dense_model(classes: int, pad_length: int) -> Sequential:
+def multiclass_cnn_model(classes: int, pad_length: int) -> Sequential:
     embedding_size = 256
     embedding_length = 64
     model = Sequential()
     model.add(Embedding(embedding_size, embedding_length,
                         input_length=pad_length))
-    model.add(Dense(200, activation="relu"))
-    model.add(Dropout(0.2))
-    model.add(Dense(100, activation="relu"))
-    model.add(Dropout(0.2))
-    model.add(Dense(50, activation="relu"))
-    model.add(Dropout(0.2))
-    model.add(Dense(25, activation="relu"))
+    model.add(Conv1D(filters=32, kernel_size=7, padding='same',
+                     activation='relu'))
+    model.add(MaxPooling1D(pool_size=2, padding="valid"))
+    model.add(Conv1D(filters=32, kernel_size=5, padding='same',
+                     activation='relu'))
+    model.add(MaxPooling1D(pool_size=2, padding="valid"))
+    model.add(Conv1D(filters=32, kernel_size=3, padding='same',
+                     activation='relu'))
+    model.add(MaxPooling1D(pool_size=2, padding="valid"))
+    model.add(Flatten())
+    model.add(Dense(30, activation="relu"))
     model.add(Dense(classes, activation="softmax"))
     model.compile(loss="categorical_crossentropy",
                   optimizer="adam",
@@ -165,11 +169,12 @@ def run_evaluation(model_dir: str, file: str, stop: int) -> None:
     test = BinaryDs(test_bin)
     test.read()
     function = test.get_function_granularity()
+    features = test.get_features()
     pad_len = test.get_categories()
     x, y = generate_sequences(test)
     while cut < stop:
         print(f"Evaluating {cut}")
-        nx, ny = cut_dataset(x, y, function, cut)
+        nx, ny = cut_dataset(x, y, function, features, cut)
         matrix = evaluate_nn(model_path, nx, ny, pad_len)
         matrix = np.asarray(matrix)
         with open(output_path, "a") as f:
@@ -188,22 +193,23 @@ def run_evaluation(model_dir: str, file: str, stop: int) -> None:
             cut = cut + 50
 
 
-def cut_dataset(x: np.array, y: np.array,
-                function: bool, cut: int) -> (np.array, np.array):
+def cut_dataset(x: np.array, y: np.array, function: bool,
+                features: int, cut: int) -> (np.array, np.array):
+    nx = []
     if function:
-        nx = []
         ny = []
         for i in range(0, len(x)):
             if len(x[i]) <= cut:
                 nx.append(x[i])
                 ny.append(y[i])
         return np.asarray(nx), np.asarray(ny)
-
     else:
-        nx = np.array(x.shape)
-        for i in range(0, len(x)):
-            nx[i] = x[i][:cut]
-        return nx, y
+        zeros = [0] * (features - cut)
+        for elem in x:
+            tmp = list(elem[:cut])
+            tmp.extend(zeros)
+            nx.append(tmp)
+        return np.asarray(nx), y
 
 
 def evaluate_nn(model_path: str, x_test: np.array, y_test: np.array,

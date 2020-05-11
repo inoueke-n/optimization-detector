@@ -130,12 +130,7 @@ class BinaryDs:
 
     # Check examples consistency (in the number of features) before adding them
     def __check_consistency(self, data: List[bytes]) -> None:
-        if self.function:
-            for element in data:
-                assert len(element) <= self.features, \
-                    f"Expected {self.features} features, but {len(element)} " \
-                    f"were provided"
-        else:
+        if not self.function:
             for element in data:
                 assert len(element) == self.features, \
                     f"Expected {self.features} features, but {len(element)} " \
