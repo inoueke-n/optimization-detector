@@ -44,11 +44,9 @@ def run_train(model_dir: str, seed: int) -> None:
     x_train, y_train = generate_sequences(train)
     x_val, y_val = generate_sequences(validate)
     x_train = sequence.pad_sequences(x_train, maxlen=train.features,
-                                     padding="post", truncating="post",
-                                     value=0x0E)
+                                     padding="post", truncating="post")
     x_val = sequence.pad_sequences(x_val, maxlen=validate.features,
-                                   padding="post", truncating="post",
-                                   value=0x0E)
+                                   padding="post", truncating="post")
 
     checkpoint = ModelCheckpoint(filepath=model_path,
                                  verbose=1,
@@ -101,12 +99,12 @@ def generate_sequences(data: BinaryDs) -> (np.array, np.array):
     return x, y
 
 
-def binary_convolutional_LSTM(pad_length: int) -> Sequential:
+def binary_convolutional_LSTM(features: int) -> Sequential:
     embedding_size = 256
     embedding_length = 64
     model = Sequential()
     model.add(Embedding(embedding_size, embedding_length,
-                        input_length=pad_length))
+                        input_length=features))
     model.add(Conv1D(filters=32, kernel_size=3, padding='same',
                      activation='relu'))
     model.add(MaxPooling1D(pool_size=2))
@@ -118,12 +116,12 @@ def binary_convolutional_LSTM(pad_length: int) -> Sequential:
     return model
 
 
-def multiclass_convolutional_LSTM(classes: int, pad_length: int) -> Sequential:
+def multiclass_convolutional_LSTM(classes: int, features: int) -> Sequential:
     embedding_size = 256
     embedding_length = 64
     model = Sequential()
     model.add(Embedding(embedding_size, embedding_length,
-                        input_length=pad_length))
+                        input_length=features))
     model.add(Conv1D(filters=32, kernel_size=3, padding='same',
                      activation='relu'))
     model.add(MaxPooling1D(pool_size=2, padding="valid"))
@@ -135,12 +133,12 @@ def multiclass_convolutional_LSTM(classes: int, pad_length: int) -> Sequential:
     return model
 
 
-def multiclass_cnn_model(classes: int, pad_length: int) -> Sequential:
+def multiclass_cnn_model(classes: int, features: int) -> Sequential:
     embedding_size = 256
     embedding_length = 64
     model = Sequential()
     model.add(Embedding(embedding_size, embedding_length,
-                        input_length=pad_length))
+                        input_length=features))
     model.add(Conv1D(filters=32, kernel_size=7, padding='same',
                      activation='relu'))
     model.add(MaxPooling1D(pool_size=2, padding="valid"))
@@ -168,21 +166,34 @@ def run_evaluation(model_dir: str, file: str, stop: int) -> None:
     assert os.path.exists(test_bin), "Test dataset does not exists!"
     test = BinaryDs(test_bin)
     test.read()
+    categories = test.get_categories()
     function = test.get_function_granularity()
     features = test.get_features()
-    pad_len = test.get_categories()
     x, y = generate_sequences(test)
     while cut < stop:
         print(f"Evaluating {cut}")
-        nx, ny = cut_dataset(x, y, function, features, cut)
-        matrix = evaluate_nn(model_path, nx, ny, pad_len)
+        nx, ny = cut_dataset(x, y, function, cut)
+        matrix = evaluate_nn(model_path, nx, ny, categories, features)
+        # binary, write confusion matrix
         matrix = np.asarray(matrix)
-        with open(output_path, "a") as f:
-            f.write(str(cut) + ",")
-            f.write(str(matrix[0][0]) + ",")
-            f.write(str(matrix[0][1]) + ",")
-            f.write(str(matrix[1][0]) + ",")
-            f.write(str(matrix[1][1]) + "\n")
+        if categories <= 2:
+            with open(output_path, "a") as f:
+                f.write(str(cut) + ",")
+                f.write(str(matrix[0][0]) + ",")
+                f.write(str(matrix[0][1]) + ",")
+                f.write(str(matrix[1][0]) + ",")
+                f.write(str(matrix[1][1]) + "\n")
+        # multiclass, calculate just accuracy
+        else:
+            correct = 0
+            for i in range(0, matrix.shape[0]):
+                correct += matrix[i][i]
+            total = sum(sum(matrix))
+            accuracy = 0
+            if total != 0:
+                accuracy = correct / total
+            with open(output_path, "a") as f:
+                f.write(str(accuracy) + "\n")
         if cut < 25:  # more accurate evaluation where required
             cut = cut + 1
         elif cut < 80:
@@ -194,9 +205,9 @@ def run_evaluation(model_dir: str, file: str, stop: int) -> None:
 
 
 def cut_dataset(x: np.array, y: np.array, function: bool,
-                features: int, cut: int) -> (np.array, np.array):
-    nx = []
+                cut: int) -> (np.array, np.array):
     if function:
+        nx = []
         ny = []
         for i in range(0, len(x)):
             if len(x[i]) <= cut:
@@ -204,20 +215,23 @@ def cut_dataset(x: np.array, y: np.array, function: bool,
                 ny.append(y[i])
         return np.asarray(nx), np.asarray(ny)
     else:
-        zeros = [0] * (features - cut)
-        for elem in x:
-            tmp = list(elem[:cut])
-            tmp.extend(zeros)
-            nx.append(tmp)
+        nx = np.empty((x.shape[0], cut))
+        for i in range(0, len(x)):
+            nx[i] = x[i][:cut]
         return np.asarray(nx), y
 
 
 def evaluate_nn(model_path: str, x_test: np.array, y_test: np.array,
-                pad_length: int):
+                classes: int, features: int):
     model = load_model(model_path)
-    yhat_classes = model.predict_classes(
-        sequence.pad_sequences(x_test, maxlen=pad_length), verbose=1)
-    yhat_classes = yhat_classes[:, 0]
-    matrix = confusion_matrix(y_test, yhat_classes)
+    x_test = sequence.pad_sequences(x_test, maxlen=features,
+                                    padding="post", truncating="post")
+    yhat_classes = model.predict_classes(x_test, verbose=1)
+    if classes > 2:
+        y_test = np.argmax(y_test, axis=1)
+        matrix = confusion_matrix(y_test, yhat_classes, num_classes=classes)
+    else:
+        yhat_classes = yhat_classes[:, 0]
+        matrix = confusion_matrix(y_test, yhat_classes, num_classes=2)
     print(matrix)
     return matrix
