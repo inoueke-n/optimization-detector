@@ -56,7 +56,9 @@ def run_preprocess(input_dir: str, category: int, model_dir: str,
     train.set(category, new_train_data)
     test.set(category, new_test_data)
     validate.set(category, new_validation_data)
-    train.rebalance(test)  # put extra data into test only
+    train.rebalance(None)  # discard examples as I want also test/val balanced
+    validate.rebalance(None)
+    test.rebalance(None)
     train.write()
     test.write()
     validate.write()

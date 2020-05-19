@@ -9,6 +9,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint, TensorBoard
 from tensorflow.keras.layers import Conv1D, MaxPooling1D, Embedding, LSTM
 from tensorflow.keras.layers import Dense, Flatten
 from tensorflow.keras.models import load_model
+from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.preprocessing import sequence
 from tensorflow.python import confusion_matrix
 from tensorflow_core.python.keras.callbacks import EarlyStopping
@@ -101,59 +102,59 @@ def generate_sequences(data: BinaryDs) -> (np.array, np.array):
 
 def binary_convolutional_LSTM(features: int) -> Sequential:
     embedding_size = 256
-    embedding_length = 64
+    embedding_length = 128
     model = Sequential()
     model.add(Embedding(embedding_size, embedding_length,
                         input_length=features))
-    model.add(Conv1D(filters=32, kernel_size=3, padding='same',
-                     activation='relu'))
-    model.add(MaxPooling1D(pool_size=2))
     model.add(LSTM(256))
     model.add(Dense(1, activation='sigmoid'))
     model.compile(loss='binary_crossentropy',
-                  optimizer='adam',
-                  metrics=['accuracy'])
+                  optimizer=Adam(1e-3),
+                  metrics=['binary_accuracy'])
     return model
 
 
 def multiclass_convolutional_LSTM(classes: int, features: int) -> Sequential:
     embedding_size = 256
-    embedding_length = 64
+    embedding_length = 128
     model = Sequential()
     model.add(Embedding(embedding_size, embedding_length,
                         input_length=features))
-    model.add(Conv1D(filters=32, kernel_size=3, padding='same',
-                     activation='relu'))
-    model.add(MaxPooling1D(pool_size=2, padding="valid"))
     model.add(LSTM(256))
     model.add(Dense(classes, activation='softmax'))
     model.compile(loss='categorical_crossentropy',
-                  optimizer='adam',
-                  metrics=['accuracy'])
+                  optimizer=Adam(1e-3),
+                  metrics=['categorical_accuracy'])
     return model
 
 
 def multiclass_cnn_model(classes: int, features: int) -> Sequential:
     embedding_size = 256
-    embedding_length = 64
+    embedding_length = 128
     model = Sequential()
     model.add(Embedding(embedding_size, embedding_length,
                         input_length=features))
-    model.add(Conv1D(filters=32, kernel_size=7, padding='same',
+    model.add(Conv1D(filters=64, kernel_size=3, padding='same',
+                     activation='relu'))
+    model.add(Conv1D(filters=64, kernel_size=7, padding='same',
                      activation='relu'))
     model.add(MaxPooling1D(pool_size=2, padding="valid"))
-    model.add(Conv1D(filters=32, kernel_size=5, padding='same',
+    model.add(Conv1D(filters=64, kernel_size=7, padding='same',
+                     activation='relu'))
+    model.add(Conv1D(filters=32, kernel_size=3, padding='same',
                      activation='relu'))
     model.add(MaxPooling1D(pool_size=2, padding="valid"))
     model.add(Conv1D(filters=32, kernel_size=3, padding='same',
                      activation='relu'))
+    model.add(Conv1D(filters=32, kernel_size=5, padding='same',
+                     activation='relu'))
     model.add(MaxPooling1D(pool_size=2, padding="valid"))
     model.add(Flatten())
-    model.add(Dense(30, activation="relu"))
+    model.add(Dense(72, activation="relu"))
     model.add(Dense(classes, activation="softmax"))
     model.compile(loss="categorical_crossentropy",
-                  optimizer="adam",
-                  metrics=["accuracy"])
+                  optimizer=Adam(1e-3),
+                  metrics=["categorical_accuracy"])
     return model
 
 
@@ -195,13 +196,16 @@ def run_evaluation(model_dir: str, file: str, stop: int) -> None:
             with open(output_path, "a") as f:
                 f.write(str(accuracy) + "\n")
         if cut < 25:  # more accurate evaluation where required
-            cut = cut + 1
+            cut = cut + 2
         elif cut < 80:
             cut = cut + 5
         elif cut < 256:
             cut = cut + 25
+        elif cut < 500:
+            cut = cut + 100
         else:
-            cut = cut + 50
+            cut = cut + 500
+            cut = min(cut, features)
 
 
 def cut_dataset(x: np.array, y: np.array, function: bool,
