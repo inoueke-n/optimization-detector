@@ -211,7 +211,7 @@ def multiclass_cnn(classes: int, features: int) -> Sequential:
     return model
 
 
-def run_evaluation(model_dir: str, file: str, stop: int) -> None:
+def run_evaluation(model_dir: str, file: str, stop: int, incr: int) -> None:
     cut = 1
     assert os.path.exists(model_dir), "Model directory does not exists!"
     model_path = os.path.join(model_dir, MODEL_NAME)
@@ -224,7 +224,10 @@ def run_evaluation(model_dir: str, file: str, stop: int) -> None:
     function = test.get_function_granularity()
     features = test.get_features()
     x, y = generate_sequences(test)
-    while cut < stop:
+    limit = stop
+    if limit == 0:
+        limit = test.get_features()
+    while cut < limit:
         print(f"Evaluating {cut}")
         nx, ny = cut_dataset(x, y, function, cut)
         matrix = evaluate_nn(model_path, nx, ny, categories, features)
@@ -247,18 +250,22 @@ def run_evaluation(model_dir: str, file: str, stop: int) -> None:
             if total != 0:
                 accuracy = correct / total
             with open(output_path, "a") as f:
+                f.write(str(cut) + ",")
                 f.write(str(accuracy) + "\n")
-        if cut < 25:  # more accurate evaluation where required
-            cut = cut + 2
-        elif cut < 80:
-            cut = cut + 5
-        elif cut < 256:
-            cut = cut + 25
-        elif cut < 500:
-            cut = cut + 100
+        if incr == 0:
+            if cut < 24:  # more accurate evaluation where required
+                cut = cut + 2
+            elif cut < 80:
+                cut = cut + 4
+            elif cut < 256:
+                cut = cut + 22
+            elif cut < 500:
+                cut = cut + 122
+            else:
+                cut = cut + 258
+                cut = min(cut, features)
         else:
-            cut = cut + 500
-            cut = min(cut, features)
+            cut = cut + 1
 
 
 def cut_dataset(x: np.array, y: np.array, function: bool,
