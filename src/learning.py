@@ -7,19 +7,19 @@ import numpy as np
 from tensorflow.keras import Sequential
 from tensorflow.keras.callbacks import ModelCheckpoint, TensorBoard
 from tensorflow.keras.layers import Conv1D, MaxPooling1D, Embedding, LSTM
-from tensorflow.keras.layers import Dense, Flatten
+from tensorflow.keras.layers import Dense, Flatten, Input, Dropout
 from tensorflow.keras.models import load_model
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.preprocessing import sequence
 from tensorflow.python import confusion_matrix
-from tensorflow_core.python.keras.callbacks import EarlyStopping
+from tensorflow.python.keras.callbacks import EarlyStopping
 
 from src.binaryds import BinaryDs
 
 MODEL_NAME = "model.h5"
 
 
-def run_train(model_dir: str, seed: int) -> None:
+def run_train(model_dir: str, seed: int, use_lstm: bool = False) -> None:
     if seed == 0:
         seed = int(time.time())
     assert os.path.exists(model_dir), "Model directory does not exists!"
@@ -36,10 +36,17 @@ def run_train(model_dir: str, seed: int) -> None:
         model = load_model(model_path)
         print("Loading previous model")
     elif train.get_categories() <= 2:
-        model = binary_convolutional_LSTM(train.features)
+        if use_lstm:
+            model = binary_lstm(train.get_features())
+        else:
+            model = binary_cnn(train.get_features())
     else:
-        model = multiclass_cnn_model(train.get_categories(),
-                                     train.features)
+        if use_lstm:
+            model = multiclass_lstm(train.get_categories(),
+                                    train.get_features())
+        else:
+            model = multiclass_cnn(train.get_categories(),
+                                   train.get_features())
     print(model.summary())
     np.random.seed(seed)
     x_train, y_train = generate_sequences(train)
@@ -100,7 +107,7 @@ def generate_sequences(data: BinaryDs) -> (np.array, np.array):
     return x, y
 
 
-def binary_convolutional_LSTM(features: int) -> Sequential:
+def binary_lstm(features: int) -> Sequential:
     embedding_size = 256
     embedding_length = 128
     model = Sequential()
@@ -114,7 +121,37 @@ def binary_convolutional_LSTM(features: int) -> Sequential:
     return model
 
 
-def multiclass_convolutional_LSTM(classes: int, features: int) -> Sequential:
+def binary_cnn(features: int) -> Sequential:
+    embedding_size = 256
+    embedding_length = 128
+    model = Sequential()
+    model.add(Embedding(embedding_size, embedding_length,
+                        input_length=features))
+    model.add(Conv1D(filters=64, kernel_size=3, padding='same',
+                     activation='relu'))
+    model.add(Conv1D(filters=64, kernel_size=7, padding='same',
+                     activation='relu'))
+    model.add(MaxPooling1D(pool_size=2, padding="valid"))
+    model.add(Conv1D(filters=64, kernel_size=7, padding='same',
+                     activation='relu'))
+    model.add(Conv1D(filters=32, kernel_size=3, padding='same',
+                     activation='relu'))
+    model.add(MaxPooling1D(pool_size=2, padding="valid"))
+    model.add(Conv1D(filters=32, kernel_size=3, padding='same',
+                     activation='relu'))
+    model.add(Conv1D(filters=32, kernel_size=5, padding='same',
+                     activation='relu'))
+    model.add(MaxPooling1D(pool_size=2, padding="valid"))
+    model.add(Flatten())
+    model.add(Dense(72, activation="relu"))
+    model.add(Dense(1, activation="sigmoid"))
+    model.compile(loss="binary_crossentropy",
+                  optimizer=Adam(1e-3),
+                  metrics=["binary_accuracy"])
+    return model
+
+
+def multiclass_lstm(classes: int, features: int) -> Sequential:
     embedding_size = 256
     embedding_length = 128
     model = Sequential()
@@ -128,7 +165,23 @@ def multiclass_convolutional_LSTM(classes: int, features: int) -> Sequential:
     return model
 
 
-def multiclass_cnn_model(classes: int, features: int) -> Sequential:
+def multiclass_dense(classes: int, features: int) -> Sequential:
+    model = Sequential()
+    model.add(Input(shape=features, ))
+    model.add(Dense(128, activation='relu'))
+    model.add(Dropout(0.2))
+    model.add(Dense(64, activation='relu'))
+    model.add(Dropout(0.2))
+    model.add(Dense(32, activation='relu'))
+    model.add(Dropout(0.2))
+    model.add(Dense(classes, activation='softmax'))
+    model.compile(loss='categorical_crossentropy',
+                  optimizer=Adam(1e-3),
+                  metrics=['categorical_accuracy'])
+    return model
+
+
+def multiclass_cnn(classes: int, features: int) -> Sequential:
     embedding_size = 256
     embedding_length = 128
     model = Sequential()
