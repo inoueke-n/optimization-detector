@@ -59,7 +59,7 @@ def run_train(model_dir: str, seed: int, use_lstm: bool = False) -> None:
                                    value=0, dtype="int32")
 
     checkpoint = ModelCheckpoint(filepath=model_path,
-                                 monitor="val_acc",
+                                 monitor="val_loss",
                                  verbose=1,
                                  save_best_only=True)
 
