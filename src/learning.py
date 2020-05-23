@@ -52,11 +52,14 @@ def run_train(model_dir: str, seed: int, use_lstm: bool = False) -> None:
     x_train, y_train = generate_sequences(train)
     x_val, y_val = generate_sequences(validate)
     x_train = sequence.pad_sequences(x_train, maxlen=train.features,
-                                     padding="post", truncating="post")
+                                     padding="pre", truncating="pre",
+                                     value=0, dtype="int32")
     x_val = sequence.pad_sequences(x_val, maxlen=validate.features,
-                                   padding="post", truncating="post")
+                                   padding="pre", truncating="pre",
+                                   value=0, dtype="int32")
 
     checkpoint = ModelCheckpoint(filepath=model_path,
+                                 monitor="val_acc",
                                  verbose=1,
                                  save_best_only=True)
 
@@ -66,7 +69,7 @@ def run_train(model_dir: str, seed: int, use_lstm: bool = False) -> None:
                              histogram_freq=1,
                              write_graph=True,
                              write_images=True,
-                             update_freq=100,
+                             update_freq=5,
                              embeddings_freq=1)
     early_stopper = EarlyStopping(monitor="val_loss",
                                   min_delta=0.001,
@@ -81,6 +84,7 @@ def run_train(model_dir: str, seed: int, use_lstm: bool = False) -> None:
 def generate_sequences(data: BinaryDs) -> (np.array, np.array):
     x = []
     y = []  # using lists since I don't know the final size beforehand
+    assert data.get_features() > 31, "Minimum number of features is 32"
     cat_no = data.get_categories()
     for i in range(0, cat_no):
         samples = data.get(i)
@@ -96,7 +100,12 @@ def generate_sequences(data: BinaryDs) -> (np.array, np.array):
                 expected = [i] * len(samples)
                 y.extend(expected)
             # keras does not like bytearrays, so int list then
-            x.extend([list(sample) for sample in samples])
+            # also, randomly cut a portion of them, so network learns to deal
+            # with padding
+            cut = np.random.randint(31, data.get_features(), len(samples))
+            samples_int = [list(sample)[:cut[idx]]
+                           for idx, sample in enumerate(samples)]
+            x.extend(samples_int)
     x = np.array(x)
     y = np.array(y)
     assert len(x) == len(y), "Something went wrong... different X and y len"
@@ -260,10 +269,12 @@ def run_evaluation(model_dir: str, file: str, stop: int, incr: int) -> None:
             elif cut < 256:
                 cut = cut + 22
             elif cut < 500:
-                cut = cut + 122
-            else:
-                cut = cut + 258
+                cut = cut + 61
+            elif cut < features:
+                cut = cut + 129
                 cut = min(cut, features)
+            else:
+                cut = 0xFFFFFFFFFFFFFFFF
         else:
             cut = cut + 1
 
@@ -288,8 +299,8 @@ def cut_dataset(x: np.array, y: np.array, function: bool,
 def evaluate_nn(model_path: str, x_test: np.array, y_test: np.array,
                 classes: int, features: int):
     model = load_model(model_path)
-    x_test = sequence.pad_sequences(x_test, maxlen=features,
-                                    padding="post", truncating="post")
+    x_test = sequence.pad_sequences(x_test, maxlen=features, dtype="int32",
+                                    padding="pre", truncating="pre", value=0)
     yhat_classes = model.predict_classes(x_test, verbose=1)
     if classes > 2:
         y_test = np.argmax(y_test, axis=1)
