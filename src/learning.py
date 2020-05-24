@@ -49,8 +49,8 @@ def run_train(model_dir: str, seed: int, use_lstm: bool = False) -> None:
                                    train.get_features())
     print(model.summary())
     np.random.seed(seed)
-    x_train, y_train = generate_sequences(train)
-    x_val, y_val = generate_sequences(validate)
+    x_train, y_train = generate_sequences(train, fake_pad=True)
+    x_val, y_val = generate_sequences(validate, fake_pad=True)
     x_train = sequence.pad_sequences(x_train, maxlen=train.features,
                                      padding="pre", truncating="pre",
                                      value=0, dtype="int32")
@@ -81,7 +81,7 @@ def run_train(model_dir: str, seed: int, use_lstm: bool = False) -> None:
               callbacks=[tensorboad, checkpoint, early_stopper])
 
 
-def generate_sequences(data: BinaryDs) -> (np.array, np.array):
+def generate_sequences(data: BinaryDs, fake_pad: bool) -> (np.array, np.array):
     x = []
     y = []  # using lists since I don't know the final size beforehand
     assert data.get_features() > 31, "Minimum number of features is 32"
@@ -102,9 +102,12 @@ def generate_sequences(data: BinaryDs) -> (np.array, np.array):
             # keras does not like bytearrays, so int list then
             # also, randomly cut a portion of them, so network learns to deal
             # with padding
-            cut = np.random.randint(31, data.get_features(), len(samples))
-            samples_int = [list(sample)[:cut[idx]]
-                           for idx, sample in enumerate(samples)]
+            if fake_pad:
+                cut = np.random.randint(31, data.get_features(), len(samples))
+                samples_int = [list(sample)[:cut[idx]]
+                               for idx, sample in enumerate(samples)]
+            else:
+                samples_int = [list(sample) for sample in samples]
             x.extend(samples_int)
     x = np.array(x)
     y = np.array(y)
@@ -232,7 +235,7 @@ def run_evaluation(model_dir: str, file: str, stop: int, incr: int) -> None:
     categories = test.get_categories()
     function = test.get_function_granularity()
     features = test.get_features()
-    x, y = generate_sequences(test)
+    x, y = generate_sequences(test, fake_pad=False)
     limit = stop
     if limit == 0:
         limit = test.get_features()
