@@ -301,7 +301,7 @@ def evaluate_nn(model_path: str, x_test: np.array, y_test: np.array,
     model = load_model(model_path)
     x_test = sequence.pad_sequences(x_test, maxlen=features, dtype="int32",
                                     padding="pre", truncating="pre", value=0)
-    yhat_classes = model.predict_classes(x_test, verbose=1)
+    yhat_classes = model.predict_classes(x_test, verbose=1, batch_size=256)
     if classes > 2:
         y_test = np.argmax(y_test, axis=1)
         matrix = confusion_matrix(y_test, yhat_classes, num_classes=classes)
