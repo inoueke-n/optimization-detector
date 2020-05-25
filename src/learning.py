@@ -7,12 +7,12 @@ import numpy as np
 from tensorflow.keras import Sequential
 from tensorflow.keras.callbacks import ModelCheckpoint, TensorBoard
 from tensorflow.keras.layers import Conv1D, MaxPooling1D, Embedding, LSTM
-from tensorflow.keras.layers import Dense, Flatten, Input, Dropout
+from tensorflow.keras.layers import Dense, Flatten, Input, Dropout, LeakyReLU
 from tensorflow.keras.models import load_model
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.preprocessing import sequence
 from tensorflow.python import confusion_matrix
-from tensorflow.python.keras.callbacks import EarlyStopping
+from tensorflow.keras.callbacks import EarlyStopping
 
 from src.binaryds import BinaryDs
 
@@ -199,21 +199,27 @@ def multiclass_cnn(classes: int, features: int) -> Sequential:
     model = Sequential()
     model.add(Embedding(embedding_size, embedding_length,
                         input_length=features))
-    model.add(Conv1D(filters=64, kernel_size=3, padding='same',
-                     activation='relu'))
-    model.add(Conv1D(filters=64, kernel_size=7, padding='same',
-                     activation='relu'))
-    model.add(MaxPooling1D(pool_size=2, padding="valid"))
-    model.add(Conv1D(filters=64, kernel_size=7, padding='same',
-                     activation='relu'))
     model.add(Conv1D(filters=32, kernel_size=3, padding='same',
-                     activation='relu'))
-    model.add(MaxPooling1D(pool_size=2, padding="valid"))
-    model.add(Conv1D(filters=32, kernel_size=3, padding='same',
-                     activation='relu'))
+                     strides=1, activation=None))
     model.add(Conv1D(filters=32, kernel_size=5, padding='same',
-                     activation='relu'))
-    model.add(MaxPooling1D(pool_size=2, padding="valid"))
+                     strides=2, activation=None))
+    model.add(LeakyReLU(alpha=0.01))
+    model.add(MaxPooling1D(pool_size=2, padding="same"))
+
+    model.add(Conv1D(filters=64, kernel_size=3, padding='same',
+                     strides=1, activation=None))
+    model.add(Conv1D(filters=64, kernel_size=5, padding='same',
+                     strides=2, activation=None))
+    model.add(LeakyReLU(alpha=0.01))
+    model.add(MaxPooling1D(pool_size=2, padding="same"))
+
+    model.add(Conv1D(filters=128, kernel_size=3, padding='same',
+                     strides=1, activation=None))
+    model.add(Conv1D(filters=128, kernel_size=5, padding='same',
+                     strides=2, activation=None))
+    model.add(LeakyReLU(alpha=0.01))
+    model.add(MaxPooling1D(pool_size=2, padding="same"))
+
     model.add(Flatten())
     model.add(Dense(72, activation="relu"))
     model.add(Dense(classes, activation="softmax"))
