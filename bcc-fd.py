@@ -119,13 +119,18 @@ class FlagDetectionTrainer:
         parser.add_argument("-c", "--cut", metavar="max cut", default="0",
                             help="Maximum allowed number of features. 0 for "
                                  "testing all the features")
+        parser.add_argument("-f", "--fixed", metavar="value", default="0",
+                            help="Test for a single number of features")
+        parser.add_argument("-s", "--seed", metavar="seed", default="0",
+                            help="Seed used to create the sequences")
         parser.add_argument("-i", "--increment", metavar="cut increment",
                             default="0",
                             help="Increment for each iteration of the "
                                  "evaluator. 0 for exp increment")
         parsed_args = parser.parse_args(args)
         run_evaluation(parsed_args.model, parsed_args.output,
-                       int(parsed_args.cut), int(parsed_args.increment))
+                       int(parsed_args.cut), int(parsed_args.increment),
+                       int(parsed_args.seed), int(parsed_args.fixed))
 
     @staticmethod
     def summary(args):

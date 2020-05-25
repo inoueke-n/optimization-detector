@@ -223,8 +223,15 @@ def multiclass_cnn(classes: int, features: int) -> Sequential:
     return model
 
 
-def run_evaluation(model_dir: str, file: str, stop: int, incr: int) -> None:
-    cut = 1
+def run_evaluation(model_dir: str, file: str, stop: int, incr: int,
+                   seed: int, fixed: int) -> None:
+    if seed == 0:
+        seed = int(time.time())
+    np.random.seed(seed)  # This is actually useless in this method...
+    if fixed != 0:
+        cut = fixed
+    else:
+        cut = 1
     assert os.path.exists(model_dir), "Model directory does not exists!"
     model_path = os.path.join(model_dir, MODEL_NAME)
     output_path = os.path.join(model_dir, file)
@@ -264,7 +271,9 @@ def run_evaluation(model_dir: str, file: str, stop: int, incr: int) -> None:
             with open(output_path, "a") as f:
                 f.write(str(cut) + ",")
                 f.write(str(accuracy) + "\n")
-        if incr == 0:
+        if fixed != 0:
+            return
+        elif incr == 0:
             if cut < 24:  # more accurate evaluation where required
                 cut = cut + 2
             elif cut < 80:
