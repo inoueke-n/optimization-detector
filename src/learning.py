@@ -78,8 +78,7 @@ def run_train(model_dir: str, seed: int, use_lstm: bool = False) -> None:
 
     model.fit(x_train, y_train, epochs=40, batch_size=256,
               validation_data=(x_val, y_val),
-              callbacks=[tensorboad, checkpoint, early_stopper])
-
+              callbacks=[tensorboad, checkpoint])
 
 def generate_sequences(data: BinaryDs, fake_pad: bool) -> (np.array, np.array):
     x = []
@@ -221,7 +220,7 @@ def multiclass_cnn(classes: int, features: int) -> Sequential:
     model.add(MaxPooling1D(pool_size=2, padding="same"))
 
     model.add(Flatten())
-    model.add(Dense(72, activation="relu"))
+    model.add(Dense(1024, activation="relu"))
     model.add(Dense(classes, activation="softmax"))
     model.compile(loss="categorical_crossentropy",
                   optimizer=Adam(1e-3),
