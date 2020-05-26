@@ -138,27 +138,33 @@ def binary_cnn(features: int) -> Sequential:
     model = Sequential()
     model.add(Embedding(embedding_size, embedding_length,
                         input_length=features))
-    model.add(Conv1D(filters=64, kernel_size=3, padding='same',
-                     activation='relu'))
-    model.add(Conv1D(filters=64, kernel_size=7, padding='same',
-                     activation='relu'))
-    model.add(MaxPooling1D(pool_size=2, padding="valid"))
-    model.add(Conv1D(filters=64, kernel_size=7, padding='same',
-                     activation='relu'))
     model.add(Conv1D(filters=32, kernel_size=3, padding='same',
-                     activation='relu'))
-    model.add(MaxPooling1D(pool_size=2, padding="valid"))
-    model.add(Conv1D(filters=32, kernel_size=3, padding='same',
-                     activation='relu'))
+                     strides=1, activation=None))
     model.add(Conv1D(filters=32, kernel_size=5, padding='same',
-                     activation='relu'))
-    model.add(MaxPooling1D(pool_size=2, padding="valid"))
+                     strides=2, activation=None))
+    model.add(LeakyReLU(alpha=0.01))
+    model.add(MaxPooling1D(pool_size=2, padding="same"))
+
+    model.add(Conv1D(filters=64, kernel_size=3, padding='same',
+                     strides=1, activation=None))
+    model.add(Conv1D(filters=64, kernel_size=5, padding='same',
+                     strides=2, activation=None))
+    model.add(LeakyReLU(alpha=0.01))
+    model.add(MaxPooling1D(pool_size=2, padding="same"))
+
+    model.add(Conv1D(filters=128, kernel_size=3, padding='same',
+                     strides=1, activation=None))
+    model.add(Conv1D(filters=128, kernel_size=5, padding='same',
+                     strides=2, activation=None))
+    model.add(LeakyReLU(alpha=0.01))
+    model.add(MaxPooling1D(pool_size=2, padding="same"))
+
     model.add(Flatten())
-    model.add(Dense(72, activation="relu"))
-    model.add(Dense(1, activation="sigmoid"))
-    model.compile(loss="binary_crossentropy",
+    model.add(Dense(1024, activation="relu"))
+    model.add(Dense(1, activation='sigmoid'))
+    model.compile(loss='binary_crossentropy',
                   optimizer=Adam(1e-3),
-                  metrics=["binary_accuracy"])
+                  metrics=['binary_accuracy'])
     return model
 
 
