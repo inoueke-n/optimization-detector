@@ -78,7 +78,7 @@ def run_train(model_dir: str, seed: int, use_lstm: bool = False) -> None:
 
     model.fit(x_train, y_train, epochs=40, batch_size=256,
               validation_data=(x_val, y_val),
-              callbacks=[tensorboad, checkpoint])
+              callbacks=[tensorboad, checkpoint, early_stopper])
 
 def generate_sequences(data: BinaryDs, fake_pad: bool) -> (np.array, np.array):
     x = []
