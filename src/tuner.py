@@ -1,3 +1,11 @@
+#
+# This file was used for hyperparameters evaluation and mostly with
+# hardcoded values. Don't read it or try to execute it please as I didn't
+# have time to clean it in time for the deadline (and it's useless for the
+# actual evaluation).
+# Btw it also contains the old CNN model without the leaky relu
+#
+
 import os
 import time
 

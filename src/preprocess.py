@@ -11,22 +11,15 @@ def run_preprocess(input_dir: str, category: int, model_dir: str,
     """
     Perform the preprocessing by adding a category and writes (or updates) the
     binary file containing the dataset on disk
-
-    Parameters
-    ---------
-    input_dir: str
-        The folder where the examples for a single category can be found
-    category: int
-        The id of the category that will be written
-    model_dir: str
-        Path to the folder where the train.bin and test.bin can be found (
-        or will be created)
-    function: bool
-        True if this method has a function level granularity
-    features: int
-        How many features (i.e. The number of bytes for each example)
-    split: float
-        The ratio training examples over total examples
+    :param input_dir The folder where the examples for a single category can be
+     found
+    :param category: The id of the category that will be written
+    :param model_dir: Path to the folder where the train.bin and test.bin
+    can be found (or will be created)
+    :param function: True if this method has a function level granularity
+    :param features: How many features (i.e. The number of bytes for each
+    example)
+    :param split: The ratio training examples over total examples
     """
     assert (os.path.exists(model_dir))
     train = BinaryDs(os.path.join(model_dir, "train.bin"))
@@ -65,6 +58,11 @@ def run_preprocess(input_dir: str, category: int, model_dir: str,
 
 
 def run_summary(model_dir: str) -> None:
+    """
+    Gets a summary of the dataset contained in a directory
+    :param model_dir: Path to the folder where the train.bin, test.bin and
+    validate.bin can be found
+    """
     assert (os.path.exists(model_dir))
     train_bin = os.path.join(model_dir, "train.bin")
     test_bin = os.path.join(model_dir, "test.bin")
@@ -100,17 +98,11 @@ def run_summary(model_dir: str) -> None:
 
 def read_dataset(dataset: BinaryDs, function: bool, features: int) -> None:
     """
-    Read the dataset and assert that is compatible with the requested
+    Reads the dataset and assert that is compatible with the requested
     granularity and features.
-
-    Parameters
-    ---------
-    dataset: BinaryDs
-        The dataset that will be read
-    function: bool
-        If function granularity has been requested
-    features: int
-        Number of features requested
+    :param dataset: The dataset that will be read
+    :param function: If function granularity has been requested
+    :param features: Number of features requested
     """
     try:
         dataset.read()
@@ -130,22 +122,12 @@ def read_dataset(dataset: BinaryDs, function: bool, features: int) -> None:
 def read_and_clean_content(files: List[str], function: bool,
                            features: int) -> List[bytes]:
     """
-    Read the raw files provided by the other program and merge all
+    Reads the raw files provided by the other program and merge all
     functions of the various files
-
-    Parameters
-    ---------
-    files: List[str]
-        List of paths to every file that will be processed
-    function: bool
-        True if the requested analysis should be function grained
-    features: int
-        The number of features expected
-
-    Returns
-    -------
-    List[bytes]: A list of bytes where each element is an example in the
-                 category
+    :param files: List of paths to every file that will be processed
+    :param function: True if the requested analysis should be function grained
+    :param features: The number of features expected
+    :return A list of bytes where each element is an example in the category
     """
     if function:
         x = read_files_function(files)
@@ -167,17 +149,9 @@ def encode_opcodes(func_list: List[str]) -> List[bytes]:
     """
     Transform a comma separated list of opcodes (as string bytes) into a
     list of bytes
-
-    Parameters
-    ---------
-    func_list: List[str]
-        The list of opcodes in the form ["DEADC0DE01"]. No spaces, commas or
-        single digits allowed (i.e. write 01 instead of 1).
-
-    Returns
-    -------
-    List[bytes]: A list of bytes where each element is an example in the
-                 category
+    :param func_list: The list of opcodes in the form ["DEADC0DE01"]. No
+    spaces, commas or single digits allowed (i.e. write 01 instead of 1).
+    :return A list of bytes where each element is an example in the category
     """
     func_list = list(map(bytes.fromhex, func_list))
     return func_list
@@ -187,19 +161,11 @@ def gather_files(path: str, function: bool) -> List[str]:
     """
     Find all files contained in a directory and filter them based on their
     extensions
-
-    Parameters
-    ----------
-    path: str
-        Path to the folder containing the files
-    function: bool
-        True if function grained is requested (will parse .txt files,
-        .bin otherwise)
-
-    Returns
-    -------
-    List[str]: A list of paths to every file contained in the folder with .txt
-                or .bin extension (based on the function parameter)
+    :param path: Path to the folder containing the files
+    :param function: True if function grained is requested (will parse .txt
+    files, .bin otherwise)
+    :return A list of paths to every file contained in the folder with .txt
+    or .bin extension (based on the function parameter)
     """
     files = list()
     for _, _, found in os.walk(path):
@@ -221,16 +187,9 @@ def read_files_function(files_list: List[str]) -> List[str]:
     """
     Read all the function opcodes contained in a file. Every line of the file
     is expected to contain the opcodes.
-
-    Parameters
-    ----------
-    files_list: List[str]
-        The list of files that will be parsed
-
-    Returns
-    ------
-    List[str]: A list of every sample contained in the file, where each
-              sample is a string in the form "DE,AD,C0,DE"
+    :param files_list: The list of files that will be parsed
+    :return A list of every sample contained in the file, where each sample
+    is a string in the form "DE,AD,C0,DE"
     """
     functions = list()
     for cur_file in files_list:
@@ -246,16 +205,9 @@ def read_files_function(files_list: List[str]) -> List[str]:
 def read_files_raw(files_list: List[str]) -> List[bytes]:
     """
     Read all the raw bytes contained in a file.
-
-    Parameters
-    ----------
-    files_list: List[str]
-        The list of files that will be parsed
-
-    Returns
-    ------
-    List[bytes]: A list of every sample contained in the file, where each
-              sample is a sequence of bytes
+    :param files_list: The list of files that will be parsed
+    :return A list of every sample contained in the file, where each sample
+    is a sequence of bytes
     """
     functions = list()
     for cur_file in files_list:
