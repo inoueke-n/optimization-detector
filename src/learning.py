@@ -58,8 +58,14 @@ def run_train(model_dir: str, seed: int, network: str) -> None:
                              "not chosen between dense/lstm/cnn")
     print(model.summary())
     np.random.seed(seed)
-    x_train, y_train = generate_sequences(train, fake_pad=True)
-    x_val, y_val = generate_sequences(validate, fake_pad=True)
+    if train.get_function_granularity():
+        # functions are already variable sized so no need to pad
+        fake_pad = False
+    else:
+        # pad the regularly sized chunks instead
+        fake_pad = True
+    x_train, y_train = generate_sequences(train, fake_pad)
+    x_val, y_val = generate_sequences(validate, fake_pad)
     x_train = sequence.pad_sequences(x_train, maxlen=train.features,
                                      padding="pre", truncating="pre",
                                      value=0, dtype="int32")
