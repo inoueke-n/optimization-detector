@@ -286,7 +286,7 @@ def run_evaluation(model_dir: str, file: str, stop: int, incr: int,
     limit = stop
     if limit == 0:
         limit = test.get_features()
-    while cut < limit:
+    while cut <= limit:
         print(f"Evaluating {cut}")
         nx, ny = cut_dataset(x, y, function, cut)
         matrix = evaluate_nn(model_path, nx, ny, categories, features)
