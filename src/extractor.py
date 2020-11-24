@@ -2,6 +2,7 @@ import os
 from typing import List
 
 import r2pipe as r2pipe
+from tqdm import tqdm
 
 
 def run_extractor(input_files: List[str], outdir: str, function: bool) -> None:
@@ -31,42 +32,28 @@ def run_extractor(input_files: List[str], outdir: str, function: bool) -> None:
         extension = ".txt"
     else:
         extension = ".bin"
-    for file in input_files:
+    for file in tqdm(input_files):
         name = os.path.basename(file)
         if function:
             pass
         else:
-            data = extract_dot_text(file)
-            if data is not None:
-                save_data(data, os.path.join(outdir, name + extension))
+            extract_dot_text(file, os.path.join(outdir, name + extension))
 
 
-def extract_dot_text(file: str) -> bytearray:
+def extract_dot_text(file: str, out_file: str):
     """
-    Extracts the raw .text section from a binary file.
+    Extracts the raw .text section from a binary file and saves it to another
+    file.
     :param file: path to the input file.
-    :return: A bytearray containing the dumped .text section, None if the
-    section does not exist.
+    :param out_file: The file where the dump will be saved.
     """
-    r2 = r2pipe.open(file)
+    r2 = r2pipe.open(file, ["-2"])
     sections = r2.cmdj("iSj")
-    data = None
     for section in sections:
         if section["name"] == ".text":
             address = section["vaddr"]
             length = section["size"]
             r2.cmd("s " + str(address))
-            data = bytearray(r2.cmdj("pxj " + str(length)))
+            r2.cmd("pr " + str(length) + " > " + out_file)
             break
     r2.quit()
-    return data
-
-
-def save_data(data: bytearray, out_file: str) -> None:
-    """
-    Saves the input bytearray in the output file.
-    :param data: The bytearray that will be saved.
-    :param out_file: Path to the output file.
-    """
-    with open(out_file, "wb") as fp:
-        fp.write(data)

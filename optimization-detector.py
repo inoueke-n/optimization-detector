@@ -36,7 +36,7 @@ class FlagDetectionTrainer:
         parser.add_argument("input",
                             nargs="*",
                             metavar="file",
-                            help="Binary file(s) that should be used for data"
+                            help="Binary file(s) that should be used for data "
                                  "extraction.")
         parser.add_argument("output_dir",
                             help="Folder that will be used for writing the "
