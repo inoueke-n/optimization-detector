@@ -7,7 +7,8 @@ from .binaryds import BinaryDs
 
 
 def run_preprocess(input_dir: str, category: int, model_dir: str,
-                   function: bool, features: int, split: float) -> None:
+                   function: bool, features: int, split: float,
+                   balanced: bool) -> None:
     """
     Perform the preprocessing by adding a category and writes (or updates) the
     binary file containing the dataset on disk
@@ -20,6 +21,8 @@ def run_preprocess(input_dir: str, category: int, model_dir: str,
     :param features: How many features (i.e. The number of bytes for each
     example)
     :param split: The ratio training examples over total examples
+    :param balanced: True if the produced dataset should have the same
+    amount of training/testing/validate samples for each category
     """
     assert (os.path.exists(model_dir))
     train = BinaryDs(os.path.join(model_dir, "train.bin"))
@@ -49,9 +52,11 @@ def run_preprocess(input_dir: str, category: int, model_dir: str,
     train.set(category, new_train_data)
     test.set(category, new_test_data)
     validate.set(category, new_validation_data)
-    train.rebalance(None)  # discard examples as I want also test/val balanced
-    validate.rebalance(None)
-    test.rebalance(None)
+    if balanced:
+        # discard examples as I want also test/val balanced
+        train.rebalance(None)
+        validate.rebalance(None)
+        test.rebalance(None)
     train.write()
     test.write()
     validate.write()

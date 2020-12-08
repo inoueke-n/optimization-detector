@@ -83,11 +83,16 @@ class FlagDetectionTrainer:
                                  "train and test+validation, the second "
                                  "between test and validation, using the "
                                  "same ratio.")
+        parser.add_argument("-b", "--balance", required=False, default=True,
+                            choices=["true", "false"],
+                            help="Decides whether the amount of samples "
+                                 "should be the same for every class or not.")
         parsed_args = parser.parse_args(args)
         run_preprocess(parsed_args.data_dir, int(parsed_args.category),
                        parsed_args.model_dir, bool(parsed_args.function ==
-                                                "true"),
-                       int(parsed_args.features), float(parsed_args.split))
+                                                   "true"),
+                       int(parsed_args.features), float(parsed_args.split),
+                       bool(parsed_args.balance == "true"))
 
     @staticmethod
     def train(args):
