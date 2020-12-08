@@ -37,10 +37,11 @@ def run_extractor(input_files: List[str], outdir: str, function: bool) -> None:
         if function:
             pass
         else:
-            extract_dot_text(file, os.path.join(outdir, name + extension))
+            extract_dot_text_to_file(file,
+                                     os.path.join(outdir, name + extension))
 
 
-def extract_dot_text(file: str, out_file: str):
+def extract_dot_text_to_file(file: str, out_file: str):
     """
     Extracts the raw .text section from a binary file and saves it to another
     file.
@@ -57,3 +58,23 @@ def extract_dot_text(file: str, out_file: str):
             r2.cmd("pr " + str(length) + " > " + out_file)
             break
     r2.quit()
+
+
+def extract_dot_text(file: str) -> List[bytes]:
+    """
+    Extracts and returns the raw .text section from a binary file.
+    :param file: path to the input file.
+    :return A bytearray containing the extracted data as a sequence of bytes.
+    """
+    data = None
+    r2 = r2pipe.open(file, ["-2"])
+    sections = r2.cmdj("iSj")
+    for section in sections:
+        if section["name"] == ".text":
+            address = section["vaddr"]
+            length = section["size"]
+            r2.cmd("s " + str(address))
+            data = r2.cmdj("pxj " + str(length))
+            break
+    r2.quit()
+    return data
