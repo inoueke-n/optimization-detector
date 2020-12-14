@@ -16,7 +16,7 @@ def inference_file(input_file: str, model: tf.keras.Model, batch_size: int,
     Performs the inference over a binary file with the given model. The data
     from the binary file will be extracted from the .text section, and split in
     chunks of `features` length, pre-padded with zeroes if the length is not
-    sufficient. `batch_size` chunks will be feeded to the model and the
+    sufficient. `batch_size` chunks will be fed to the model and the
     predictions collected.
     :param input_file: Path to the file from which the data will be extracted.
     :param model: The model used for inference.
@@ -64,11 +64,12 @@ def run_inference(input_files: List[str], input_dir: str, model_path: str,
                 total_jobs += 1
     results = []
     model = load_model(model_path)
+    progress = tqdm(total=total_jobs)
     for job in jobs:
-        with tqdm(total=total_jobs) as progress:
-            result = inference_file(job, model, batch_size, features)
-            progress.update()
-            results.append((job, result))
+        result = inference_file(job, model, batch_size, features)
+        progress.update(1)
+        results.append((job, result))
+    progress.close()
     if output is not None:
         if os.path.exists(output):
             fp = open(output, "at")

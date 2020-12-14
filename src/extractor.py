@@ -41,6 +41,23 @@ def run_extractor(input_files: List[str], outdir: str, function: bool) -> None:
                                      os.path.join(outdir, name + extension))
 
 
+def dot_text_name(r2: r2pipe) -> str:
+    """
+    Returns the name of the dot text section.
+    The name of this session is slightly different for the various OSes.
+    :param r2: Opened r2pipe, used to gather info about the binary file
+    :return: A string with the .text name inside the binary.
+    """
+    info = r2.cmdj("ij")
+    bint = info["bin"]["bintype"]
+    if bint == "mach0":
+        return "0.__TEXT.__text"
+    elif bint == "elf" or bint == "pe":
+        return ".text"
+    else:
+        raise ValueError(f"Unknown file format {bint}")
+
+
 def extract_dot_text_to_file(file: str, out_file: str):
     """
     Extracts the raw .text section from a binary file and saves it to another
@@ -50,8 +67,9 @@ def extract_dot_text_to_file(file: str, out_file: str):
     """
     r2 = r2pipe.open(file, ["-2"])
     sections = r2.cmdj("iSj")
+    expected_name = dot_text_name(r2)
     for section in sections:
-        if section["name"] == ".text":
+        if section["name"] == expected_name:
             address = section["vaddr"]
             length = section["size"]
             r2.cmd("s " + str(address))
@@ -69,8 +87,9 @@ def extract_dot_text(file: str) -> List[bytes]:
     data = None
     r2 = r2pipe.open(file, ["-2"])
     sections = r2.cmdj("iSj")
+    expected_name = dot_text_name(r2)
     for section in sections:
-        if section["name"] == ".text":
+        if section["name"] == expected_name:
             address = section["vaddr"]
             length = section["size"]
             r2.cmd("s " + str(address))
