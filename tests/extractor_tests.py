@@ -1,9 +1,11 @@
+import csv
 import os
 import shutil
 import tempfile
 from unittest import TestCase
 
-from src.extractor import extract_dot_text, extract_dot_text_to_file
+from src.extractor import extract_dot_text, extract_dot_text_to_file, \
+    extract_function_to_file, get_opcode
 
 PREFIX = "BCCFLT_"
 
@@ -156,3 +158,25 @@ class TestExtractor(TestCase):
         with open(extracted, "rb") as fp:
             extracted_data = list(fp.read())
         self.assertEqual(extracted_data, self.expected)
+
+    def test_get_opcode_x8664(self):
+        inputs = ["f30f1efa", "e953ffff", "0f97C1", "490faf", "f2ff", "f20fc7"]
+        expected = [bytearray(b"\x0f\x1e"),
+                    bytearray(b"\xe9"),
+                    bytearray(b"\x0f\x97"),
+                    bytearray(b"\x0f\xaf"),
+                    bytearray(b"\xf2"),
+                    bytearray(b"\x0f\xc7")]
+        for i in range(0, len(inputs)):
+            opcode = get_opcode(bytearray.fromhex(inputs[i]))
+            self.assertEqual(opcode, expected[i])
+
+    def test_extract_function_to_file(self):
+        self.assertTrue(os.path.exists(self.file))
+        extracted = os.path.join(self.tmpdir, "extracted.csv")
+        extract_function_to_file(self.file, extracted)
+        # can't check the content, so just hope for the best and check method
+        # completition
+        with open(extracted, "r") as fp:
+            read = csv.reader(fp, delimiter=",")
+            self.assertEqual(sum(1 for _ in read), 28)
