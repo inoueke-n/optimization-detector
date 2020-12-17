@@ -181,23 +181,27 @@ def extract_function_to_file(file: str, out_file: str) -> None:
     """
     r2 = r2pipe.open(file, ["-2"])
     r2.cmd("aaa")
+    imports = r2.cmdj("iij")
+    import_set = {imp["plt"] for imp in imports}
     functions = r2.cmdj("aflj")
     rows = []
     if functions is not None:  # some files contain 0 functions
         for function in functions:
-            r2.cmd(f"s {function['offset']}")
-            func = r2.cmdj("pdrj")
-            opcodes = bytearray()
-            raw_opcodes = []
-            for stmt in func:
-                if "bytes" in stmt:  # invalid opcodes do not have "bytes"
-                    opcodes_arr = get_opcode(bytearray.fromhex(stmt["bytes"]))
-                    opcodes.extend(opcodes_arr)
-                    raw_opcodes.append(stmt["bytes"])
-            rows.append(
-                [function["offset"], function["name"], function["size"],
-                 ''.join(x for x in raw_opcodes),
-                 ''.join(format(x, '02x') for x in opcodes)])
+            if function["offset"] not in import_set:
+                r2.cmd(f"s {function['offset']}")
+                func = r2.cmdj("pdrj")
+                opcodes = bytearray()
+                raw_opcodes = []
+                for stmt in func:
+                    if "bytes" in stmt:  # invalid opcodes do not have "bytes"
+                        opcodes_arr = get_opcode(
+                            bytearray.fromhex(stmt["bytes"]))
+                        opcodes.extend(opcodes_arr)
+                        raw_opcodes.append(stmt["bytes"])
+                rows.append(
+                    [function["offset"], function["name"], function["size"],
+                     ''.join(x for x in raw_opcodes),
+                     ''.join(format(x, '02x') for x in opcodes)])
     with open(out_file, "w") as fp:
         writer = csv.writer(fp, delimiter=",", quotechar='"',
                             quoting=csv.QUOTE_NONNUMERIC)

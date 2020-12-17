@@ -179,4 +179,4 @@ class TestExtractor(TestCase):
         # completition
         with open(extracted, "r") as fp:
             read = csv.reader(fp, delimiter=",")
-            self.assertEqual(sum(1 for _ in read), 28)
+            self.assertEqual(sum(1 for _ in read), 10)
