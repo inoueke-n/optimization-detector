@@ -1,5 +1,7 @@
 import csv
 import os
+from concurrent.futures._base import as_completed
+from concurrent.futures.process import ProcessPoolExecutor
 from typing import List
 
 import r2pipe as r2pipe
@@ -41,7 +43,8 @@ invalid_opcodes_table = [False, False, False, False, False, False, True, True,
                          False, False, False, False, False, False]
 
 
-def run_extractor(input_files: List[str], outdir: str, function: bool) -> None:
+def run_extractor(input_files: List[str], outdir: str, function: bool,
+                  jobs: int) -> None:
     """
     Extracts the data from binary files, either as a list of function
     opcodes or just the raw .text section.
@@ -52,6 +55,7 @@ def run_extractor(input_files: List[str], outdir: str, function: bool) -> None:
     in case of function analysis or .bin otherwise.
     :param function: true if function analysis is requested. This particular
     type of analysis uses the output of disassembly instead of plain raw bytes.
+    :param jobs: maximum number of jobs that will be spawned concurrently
     """
     if os.path.exists(outdir):
         if os.path.isdir(outdir):
@@ -66,15 +70,20 @@ def run_extractor(input_files: List[str], outdir: str, function: bool) -> None:
 
     if function:
         extension = ".csv"
+        f = extract_function_to_file
     else:
         extension = ".bin"
-    for file in tqdm(input_files):
-        name = os.path.basename(file)
-        outfile = os.path.join(outdir, name + extension)
-        if function:
-            extract_function_to_file(file, outfile)
-        else:
-            extract_dot_text_to_file(file, outfile)
+        f = extract_dot_text_to_file
+
+    progress = tqdm(total=len(input_files))
+    with ProcessPoolExecutor(max_workers=jobs) as executor:
+        basenames = [(file, os.path.basename(file)) for file in input_files]
+        args = [{'file': name[0],
+                 'out_file': os.path.join(outdir, name[1] + extension)} for
+                name in basenames]
+        fut = {executor.submit(f, **arg) for arg in args}
+        for _ in as_completed(fut, timeout=86400):
+            progress.update(1)
 
 
 def dot_text_name(r2: r2pipe) -> str:

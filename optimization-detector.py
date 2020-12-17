@@ -48,9 +48,15 @@ class FlagDetectionTrainer:
                             default="False",
                             help="Extracts data for function grained "
                                  "analysis if this variable is true.")
+        parser.add_argument("-j", "--jobs", required=False,
+                            default=multiprocessing.cpu_count(),
+                            help="Specifies the number of concurrent jobs. "
+                                 "Default to the number of CPUs in the "
+                                 "system.")
         parsed_args = parser.parse_args(args)
         run_extractor(parsed_args.input, parsed_args.output_dir,
-                      bool(parsed_args.function == "true"))
+                      bool(parsed_args.function == "true"),
+                      parsed_args.jobs)
 
     @staticmethod
     def preprocess(args):
