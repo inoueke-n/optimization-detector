@@ -67,8 +67,8 @@ class FlagDetectionTrainer:
                   f"-c "
                   f"category data_dir model_dir\n")
         parser.add_argument("data_dir",
-                            help="Path to the folder containing the "
-                                 "unprocessed data.")
+                            help="Path to the folder (or to a single file) "
+                                 "containing the unprocessed data")
         parser.add_argument("model_dir",
                             help="Path to the folder that will contain the "
                                  "model. If an existing dataset is found, "
@@ -89,7 +89,7 @@ class FlagDetectionTrainer:
                                  "train and test+validation, the second "
                                  "between test and validation, using the "
                                  "same ratio.")
-        parser.add_argument("-b", "--balance", required=False, default=True,
+        parser.add_argument("-b", "--balance", required=False, default="true",
                             choices=["true", "false"],
                             help="Decides whether the amount of samples "
                                  "should be the same for every class or not.")

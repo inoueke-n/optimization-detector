@@ -1,16 +1,24 @@
+import csv
 import math
 import os
 import random
+import sys
 from typing import List
 
+from termcolor import colored
+from tqdm import tqdm
+
 from .binaryds import BinaryDs
+
+MINIMUM_FEATURES: int = 32
+csv.field_size_limit(sys.maxsize)
 
 
 def run_preprocess(input_dir: str, category: int, model_dir: str,
                    function: bool, features: int, split: float,
                    balanced: bool) -> None:
     """
-    Perform the preprocessing by adding a category and writes (or updates) the
+    Performs the preprocessing by adding a category and writes (or updates) the
     binary file containing the dataset on disk
     :param input_dir The folder where the examples for a single category can be
      found
@@ -29,9 +37,12 @@ def run_preprocess(input_dir: str, category: int, model_dir: str,
     test = BinaryDs(os.path.join(model_dir, "test.bin"))
     validate = BinaryDs(os.path.join(model_dir, "validate.bin"))
     files = gather_files(input_dir, function)
+    print("Loading old dataset... ", end="", flush=True)
     read_dataset(train, function, features)
     read_dataset(test, function, features)
     read_dataset(validate, function, features)
+    print(colored("OK", "green", attrs=['bold']), flush=True)
+    print("Reading new files... ", flush=True)
     data = read_and_clean_content(files, function, features)
     # Re-mix train and test for accurate duplicates elimination
     # most times this will return just [].
@@ -41,6 +52,7 @@ def run_preprocess(input_dir: str, category: int, model_dir: str,
     data.extend(old_data)
     del old_data
     # now shuffle, remove duplicates and split into train, test validation
+    print("Shuffling... ", end="", flush=True)
     random.shuffle(data)
     data = list(set(data))
     split_index = math.floor(len(data) * split)
@@ -52,14 +64,21 @@ def run_preprocess(input_dir: str, category: int, model_dir: str,
     train.set(category, new_train_data)
     test.set(category, new_test_data)
     validate.set(category, new_validation_data)
+    print(colored("OK", "green", attrs=['bold']), flush=True)
+    print("Balancing... ", end="", flush=True)
     if balanced:
         # discard examples as I want also test/val balanced
         train.rebalance(None)
         validate.rebalance(None)
         test.rebalance(None)
+        print(colored("OK", "green", attrs=['bold']), flush=True)
+    else:
+        print(colored("SKIP", "white", attrs=['bold']), flush=True)
+    print("Writing... ", end="", flush=True)
     train.write()
     test.write()
     validate.write()
+    print(colored("OK", "green", attrs=['bold']), flush=True)
 
 
 def run_summary(model_dir: str) -> None:
@@ -128,7 +147,12 @@ def read_and_clean_content(files: List[str], function: bool,
                            features: int) -> List[bytes]:
     """
     Reads the raw files provided by the other program and merge all
-    functions of the various files
+    functions of the various files.
+    Functions/data with more bytes than the number of features will be split
+    into several chunks of features length.
+    If function grained is chosen, chunks with less than MINIMUM_FEATURES bytes
+    (default 32) will be discarded, otherwise chunks with an amount of bytes
+    different than the number of features will be discarded.
     :param files: List of paths to every file that will be processed
     :param function: True if the requested analysis should be function grained
     :param features: The number of features expected
@@ -136,49 +160,43 @@ def read_and_clean_content(files: List[str], function: bool,
     """
     if function:
         x = read_files_function(files)
-        x = encode_opcodes(x)
     else:
         x = read_files_raw(files)
-        # split in chunks of "features" length
-        chunked = []
-        for el in x:
-            chunked.extend([el[j:j + features]
-                            for j in range(0, len(el), features)])
-        # drop elements different from features size
+    # split in chunks of "features" length
+    chunked = []
+    for el in x:
+        chunks = [el[j:j + features] for j in range(0, len(el), features)]
+        chunked.extend(chunks)
+    if function:
+        # drop elements less than minimum size
+        x = list(filter(lambda l: len(l) >= MINIMUM_FEATURES, chunked))
+    else:
+        # drop elements less than minimum size
         x = list(filter(lambda l: len(l) == features, chunked))
-        del chunked
     return x
-
-
-def encode_opcodes(func_list: List[str]) -> List[bytes]:
-    """
-    Transform a comma separated list of opcodes (as string bytes) into a
-    list of bytes
-    :param func_list: The list of opcodes in the form ["DEADC0DE01"]. No
-    spaces, commas or single digits allowed (i.e. write 01 instead of 1).
-    :return A list of bytes where each element is an example in the category
-    """
-    func_list = list(map(bytes.fromhex, func_list))
-    return func_list
 
 
 def gather_files(path: str, function: bool) -> List[str]:
     """
-    Find all files contained in a directory and filter them based on their
-    extensions
-    :param path: Path to the folder containing the files
+    Finds all files contained in a directory and filter them based on their
+    extensions.
+    :param path: Path to the folder containing the files or to a single file
     :param function: True if function grained is requested (will parse .txt
     files, .bin otherwise)
     :return A list of paths to every file contained in the folder with .txt
     or .bin extension (based on the function parameter)
     """
-    files = list()
-    for _, _, found in os.walk(path):
-        for cur_file in found:
-            cur_abs = os.path.join(path, cur_file)
-            files.append(cur_abs)
+
+    if os.path.isdir(path):
+        files = list()
+        for _, _, found in os.walk(path):
+            for cur_file in found:
+                cur_abs = os.path.join(path, cur_file)
+                files.append(cur_abs)
+    else:
+        files = [path]
     if function:
-        ext = ".txt"
+        ext = ".csv"
     else:
         ext = ".bin"
     files = list(filter(lambda x: os.path.splitext(x)[1] == ext, files))
@@ -188,34 +206,37 @@ def gather_files(path: str, function: bool) -> List[str]:
     return files
 
 
-def read_files_function(files_list: List[str]) -> List[str]:
+def read_files_function(files_list: List[str]) -> List[bytes]:
     """
-    Read all the function opcodes contained in a file. Every line of the file
-    is expected to contain the opcodes.
-    :param files_list: The list of files that will be parsed
-    :return A list of every sample contained in the file, where each sample
-    is a string in the form "DE,AD,C0,DE"
-    """
-    functions = list()
-    for cur_file in files_list:
-        with open(cur_file, 'r') as f:
-            for cnt, line in enumerate(f):
-                line = line.strip('\n')
-                if line == "FF," or line == "" or line == "[]":
-                    continue
-                functions.append(line)
-    return functions
+    Reads all the function opcodes contained in a list of file. Each file is
+    expected to be a .csv one, with the opcodes in the field "opcodes" as an
+    hex string.
 
-
-def read_files_raw(files_list: List[str]) -> List[bytes]:
-    """
-    Read all the raw bytes contained in a file.
     :param files_list: The list of files that will be parsed
     :return A list of every sample contained in the file, where each sample
     is a sequence of bytes
     """
     functions = list()
-    for cur_file in files_list:
+    for cur_file in tqdm(files_list, ncols=60):
+        with open(cur_file, 'r') as f:
+            reader = csv.DictReader(f, delimiter=",", quotechar='"',
+                                    quoting=csv.QUOTE_NONNUMERIC)
+            for row in reader:
+                data = row["opcodes"]
+                encoded_data = bytes.fromhex(data)
+                functions.append(encoded_data)
+    return functions
+
+
+def read_files_raw(files_list: List[str]) -> List[bytes]:
+    """
+    Reads all the raw bytes contained in a file.
+    :param files_list: The list of files that will be parsed
+    :return A list of every sample contained in the file, where each sample
+    is a sequence of bytes
+    """
+    functions = list()
+    for cur_file in tqdm(files_list, ncols=60):
         with open(cur_file, 'rb') as f:
             functions.append(f.read())
     return functions
