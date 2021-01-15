@@ -75,7 +75,7 @@ def run_extractor(input_files: List[str], outdir: str, function: bool,
         extension = ".bin"
         f = extract_dot_text_to_file
 
-    progress = tqdm(total=len(input_files))
+    progress = tqdm(total=len(input_files), ncols=60)
     with ProcessPoolExecutor(max_workers=jobs) as executor:
         basenames = [(file, os.path.basename(file)) for file in input_files]
         args = [{'file': name[0],

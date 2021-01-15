@@ -99,8 +99,10 @@ def run_train(model_dir: str, seed: int, network: str) -> None:
 def generate_sequences(data: BinaryDs, fake_pad: bool) -> (np.array, np.array):
     """
     Generates the pairs (X, y) that will be used during the training.
-    More specifically generates y, shuffle X and randomly remove data from X
-    otherwise the network won't learn how to deal with padding.
+    More specifically generates y and shuffle X.
+    If fake_pad is true, randomly removes data from X. This is useful in case
+    the training samples have always the same amount of features, but during
+    inference this number may change.
     :param data: binary dataset containing the samples
     :param fake_pad: true if padding should be added
     :return: (X, y) as np.arrays. X shape will be (samples, features),
@@ -109,6 +111,7 @@ def generate_sequences(data: BinaryDs, fake_pad: bool) -> (np.array, np.array):
     """
     x = []
     y = []  # using lists since I don't know the final size beforehand
+    # This is hardcoded because also the minimum cut is hardcoded
     assert data.get_features() > 31, "Minimum number of features is 32"
     cat_no = data.get_categories()
     for i in range(0, cat_no):
