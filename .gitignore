@@ -1,4 +1,6 @@
 .idea/
+resources/sources
+resources/sources.tar
 
 # Created by https://www.gitignore.io/api/venv,python,pycharm,macos
 # Edit at https://www.gitignore.io/?templates=venv,python,pycharm,macos
