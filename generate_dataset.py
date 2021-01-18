@@ -3,6 +3,7 @@ import hashlib
 import multiprocessing
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import tarfile
@@ -145,17 +146,17 @@ def check_flags(args: Namespace) -> Namespace:
     return args
 
 
-def which(exe: List[str], wrong_exe: List[str]):
+def which(exe_list: List[str], wrong_exe: List[str]):
     """
     Locate some executables. Given a list of executable, locates them by
     looking in the path and replaces their name with the absolute path. If
     the executable can not be located, it is appended to the `wrong_exe` list
     """
-    for i, exe in enumerate(exe):
+    for i, exe in enumerate(exe_list):
         if not os.path.isfile(exe) or not os.access(exe, os.X_OK):
             abs = shutil.which(exe)
             if abs is not None:
-                exe[i] = abs
+                exe_list[i] = abs
             else:
                 wrong_exe.append(exe)
 
@@ -279,6 +280,7 @@ def prepare_folder(args: Namespace) -> Namespace:
                 os.remove(os.path.join("resources/sources", file))
         println_ok()
     args.build_dir = tempfile.mkdtemp()
+    os.makedirs(os.path.join(args.build_dir, "logs"))
     print("Decompressing... ", end="", flush=True)
     with tarfile.open("resources/sources.tar", "r") as tar:
         tar.extractall(args.build_dir)
@@ -290,9 +292,44 @@ def prepare_folder(args: Namespace) -> Namespace:
     return args
 
 
+def build(args: Namespace):
+    """
+    Runs the various bash scripts that will build the dataset
+    """
+    myenv = os.environ.copy()
+    myenv["CC"] = args.cc[0]
+    myenv["CXX"] = args.cxx[0]
+    myenv["CFLAGS"] = "-O0"
+    myenv["CXXFLAGS"] = myenv["CFLAGS"]
+    src_dir = os.path.join(args.build_dir, "sources")
+    err = []
+    print("Building...")
+    for script in tqdm(sorted(os.listdir("resources/scripts")),
+                       file=sys.stdout):
+        script_abs = os.path.abspath(os.path.join("resources/scripts", script))
+        outfile = os.path.join(args.build_dir, "logs")
+        errfile = os.path.join(outfile, script + ".stderr.log")
+        outfile = os.path.join(outfile, script + ".stdout.log")
+        script_args = ["bash", script_abs, args.build_dir, str(args.jobs)]
+        outfile = open(outfile, "w")
+        errfile = open(errfile, "w")
+        process = subprocess.Popen(script_args, env=myenv, cwd=src_dir,
+                                   stdout=outfile, stderr=errfile)
+        process.wait()
+        outfile.close()
+        errlen = errfile.tell()
+        errfile.close()
+        if errlen > 0:
+            err.append(script)
+    if len(err):
+        println_warn(f"The following scripts did not run successfully: {err}")
+
+
+
 if __name__ == "__main__":
     args = getopt()
     args = check_flags(args)
     check_host_system()
     args = prepare_folder(args)
+    build(args)
     shutil.rmtree(args.build_dir)
