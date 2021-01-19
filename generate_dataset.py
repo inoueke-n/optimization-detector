@@ -5,17 +5,17 @@ import os
 import shutil
 import subprocess
 import sys
-import tempfile
 import tarfile
-import urllib.request
+import tempfile
 import urllib.error
+import urllib.request
 from argparse import Namespace
 from typing import Dict, List
 
 from tqdm import tqdm
 
 
-class color:
+class Color:
     PURPLE = '\033[95m'
     CYAN = '\033[96m'
     DARKCYAN = '\033[36m'
@@ -32,21 +32,21 @@ def println_ok():
     """
     Prints OK in bold green
     """
-    print(color.BOLD + color.GREEN + "OK" + color.END, flush=True)
+    print(Color.BOLD + Color.GREEN + "OK" + Color.END, flush=True)
 
 
 def println_err():
     """
     Prints ERR in bold red
     """
-    print(color.BOLD + color.RED + "ERR" + color.END, flush=True)
+    print(Color.BOLD + Color.RED + "ERR" + Color.END, flush=True)
 
 
 def println_warn(text: str):
     """
     Prints WARN in yellow, and the warning message
     """
-    print("[" + color.BOLD + color.YELLOW + "WARN" + color.END + f"]: {text}",
+    print("[" + Color.BOLD + Color.YELLOW + "WARN" + Color.END + f"]: {text}",
           flush=True)
 
 
@@ -54,7 +54,7 @@ def println_info(text: str):
     """
     Prints INFO in cyan, and the info message
     """
-    print("[" + color.BOLD + color.CYAN + "INFO" + color.END + f"]: {text}",
+    print("[" + Color.BOLD + Color.CYAN + "INFO" + Color.END + f"]: {text}",
           flush=True)
 
 
@@ -70,20 +70,26 @@ def getopt() -> Namespace:
                         help="Specifies the number of concurrent jobs. "
                              "Defaults to the number of CPUs in the "
                              "system.")
-    parser.add_argument("--cc", required=False, type=str,
-                        help="Name of the C compiler to be used. If more "
+    parser.add_argument("-t", "--targets", required=False, type=str,
+                        help="Toolchain triplet. A triplet like "
+                             "x86_64-linux-gnu is expected. This will be "
+                             "used for the target platform. The complete "
+                             "toolchain is expected to be located in "
+                             "/usr/<toolchain triplet>. If more "
                              "than one, separate the paths with :",
                         default="cc")
-    parser.add_argument("--cxx", required=False, type=str,
-                        help="Name of the CXX compiler to be used. If more "
-                             "than one, separate the paths with :",
-                        default="c++")
     parser.add_argument("-o", "--opts", type=str,
                         help="String with the optimization levels that will "
                              "be passed to each compilation. Should contain "
                              "only the numbers 0,1,2,3 or s separated by :",
                         default="0:1:2:3:s")
     return parser.parse_args()
+
+
+def err_msg_not_in_path(x: str):
+    println_err()
+    print(f'{Color.BOLD}{x}{Color.END} is not in PATH')
+    exit(1)
 
 
 def check_flags(args: Namespace) -> Namespace:
@@ -93,21 +99,34 @@ def check_flags(args: Namespace) -> Namespace:
     and creates the output folder if not existing.
     :param args arguments received from ArgumentParser
     """
-    print("Checking args... ", end="", flush=True)
+
     info = []
-    cc = list(filter(None, args.cc.split(":")))
-    cxx = list(filter(None, args.cxx.split(":")))
+    triplets = list(filter(None, args.targets.split(":")))
     flags = list(filter(None, args.opts.split(":")))
-    if len(cc) != len(cxx):
-        println_err()
-        print(f"--cc and --cxx variables should have the same length. Got "
-              f"{cc} and {cxx} respectively")
-        exit(1)
-    if len(cc) == 0:
-        cc = ['cc']
-        cxx = ['c++']
-        info.append("Compilers have been set to default values. (None were "
-                    "passed)")
+    print(f"Building for the following targets: {triplets}")
+    print(f"Building following flags: {flags}")
+    print("Checking args... ", end="", flush=True)
+    toolchain_expected = {"ar", "as", "ld", "nm", "objcopy", "objdump",
+                          "ranlib", "readelf", "strip"}
+    for triplet in triplets:
+        # asserts existence of the toolchain tools
+        for tool in toolchain_expected:
+            path = os.path.join("/usr", triplet)
+            path = os.path.join(path, "bin")
+            path = os.path.join(path, tool)
+            if not os.path.exists(path):
+                println_err()
+                print(f"Missing tool {path}")
+                exit(1)
+        cc = shutil.which(cmd=triplet + "-gcc", mode=os.X_OK)
+        cxx = shutil.which(cmd=triplet + "-g++", mode=os.X_OK)
+        pkg_config = shutil.which(cmd=triplet + "-pkg-config", mode=os.X_OK)
+        if cc is None:
+            err_msg_not_in_path(triplet + "-gcc")
+        if cxx is None:
+            err_msg_not_in_path(triplet + "-g++")
+        if pkg_config is None:
+            err_msg_not_in_path(triplet + "-pkg-config")
     allowed_flags = {"0", "1", "2", "3", "s"}
     for flag in flags:
         if flag not in allowed_flags:
@@ -117,12 +136,6 @@ def check_flags(args: Namespace) -> Namespace:
         flags = list(allowed_flags)
         info.append("Optimization flags have been set to default values. ("
                     "None were passed)")
-    wrong_cc = []
-    which(cc, wrong_cc)
-    which(cxx, wrong_cc)
-    if len(wrong_cc) > 0:
-        println_err()
-        print(f"Could not find the following compilers: {wrong_cc}")
     if not os.path.exists(args.output):
         try:
             os.makedirs(args.output)
@@ -140,8 +153,7 @@ def check_flags(args: Namespace) -> Namespace:
     println_ok()
     for msg in info:
         println_info(msg)
-    args.cc = cc
-    args.cxx = cxx
+    args.targets = triplets
     args.flags = flags
     return args
 
@@ -184,6 +196,8 @@ def check_host_system():
            ("tar", "tar"),
            ("makeinfo", "texinfo"),
            ("xz", "xz"),
+           ("meson", "meson"),
+           ("ninja", "ninja-build")
            }
     missing = []
     for program in set:
@@ -246,6 +260,7 @@ def prepare_folder(args: Namespace) -> Namespace:
     md5s.pop("")
     if not os.path.exists("resources/sources.tar"):
         print("Retrieving software... ", end="", flush=True)
+        os.makedirs("resources/sources", exist_ok=True)
         urls = {"": ""}
         with open("resources/wget-list", "r") as fp:
             for url in fp.read().splitlines():
@@ -261,7 +276,7 @@ def prepare_folder(args: Namespace) -> Namespace:
             exit(1)
         else:
             print("")
-        for key in tqdm(urls.keys(), file=sys.stdout):
+        for key in tqdm(urls.keys(), file=sys.stdout, ncols=60):
             try:
                 filename = os.path.join("resources/sources", key)
                 urllib.request.urlretrieve(urls[key], filename)
@@ -296,34 +311,48 @@ def build(args: Namespace):
     """
     Runs the various bash scripts that will build the dataset
     """
-    myenv = os.environ.copy()
-    myenv["CC"] = args.cc[0]
-    myenv["CXX"] = args.cxx[0]
-    myenv["CFLAGS"] = "-O0"
-    myenv["CXXFLAGS"] = myenv["CFLAGS"]
     src_dir = os.path.join(args.build_dir, "sources")
-    err = []
-    print("Building...")
-    for script in tqdm(sorted(os.listdir("resources/scripts")),
-                       file=sys.stdout):
-        script_abs = os.path.abspath(os.path.join("resources/scripts", script))
-        outfile = os.path.join(args.build_dir, "logs")
-        errfile = os.path.join(outfile, script + ".stderr.log")
-        outfile = os.path.join(outfile, script + ".stdout.log")
-        script_args = ["bash", script_abs, args.build_dir, str(args.jobs)]
-        outfile = open(outfile, "w")
-        errfile = open(errfile, "w")
-        process = subprocess.Popen(script_args, env=myenv, cwd=src_dir,
-                                   stdout=outfile, stderr=errfile)
-        process.wait()
-        outfile.close()
-        errlen = errfile.tell()
-        errfile.close()
-        if errlen > 0:
-            err.append(script)
-    if len(err):
-        println_warn(f"The following scripts did not run successfully: {err}")
-
+    for triplet in args.targets:
+        # this is useless, but configure puts a warning if not found.
+        # and warnings are reported as errors by this script.
+        mt = os.path.join(args.build_dir, triplet + "-mt")
+        os.symlink("/bin/true", mt)
+        for opt in args.flags:
+            err = []
+            myenv = os.environ.copy()
+            myenv["CC"] = triplet + "-gcc"
+            myenv["CXX"] = triplet + "-g++"
+            myenv["PKG_CONFIG"] = triplet + "-pkg-config"
+            myenv["CFLAGS"] = "-O" + opt
+            myenv["LDFLAGS"] = "-L" + os.path.join(args.build_dir, "lib")
+            myenv["LDFLAGS"] += " -L" + os.path.join(args.build_dir, "usr/lib")
+            myenv["CXXFLAGS"] = myenv["CFLAGS"]
+            myenv["PATH"] = myenv["PATH"] + ":" + args.build_dir  # for mt
+            print(f"Building {Color.BOLD}{triplet}{Color.END} with "
+                  f"optimization {Color.BOLD}-O{opt}{Color.END}...")
+            script_list = sorted(os.listdir("resources/scripts"))
+            for script in tqdm(script_list, file=sys.stdout, ncols=60):
+                script_abs = os.path.abspath(
+                    os.path.join("resources/scripts", script))
+                outfile = os.path.join(args.build_dir, "logs")
+                errfile = os.path.join(outfile, script + ".stderr.log")
+                outfile = os.path.join(outfile, script + ".stdout.log")
+                script_args = ["bash", script_abs, args.build_dir,
+                               str(args.jobs), opt, triplet]
+                outfile = open(outfile, "w")
+                errfile = open(errfile, "w")
+                process = subprocess.Popen(script_args, env=myenv, cwd=src_dir,
+                                           stdout=outfile, stderr=errfile)
+                process.wait()
+                outfile.close()
+                errlen = errfile.tell()
+                errfile.close()
+                if errlen > 0:
+                    err.append(script)
+            if len(err):
+                println_warn(
+                    f"The following scripts did not run successfully: {err}")
+        os.remove(mt)
 
 
 if __name__ == "__main__":
@@ -332,4 +361,4 @@ if __name__ == "__main__":
     check_host_system()
     args = prepare_folder(args)
     build(args)
-    shutil.rmtree(args.build_dir)
+    # shutil.rmtree(args.build_dir)
