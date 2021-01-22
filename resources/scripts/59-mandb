@@ -1,0 +1,11 @@
+#!/bin/bash
+tar xf man-db-2.9.0.tar.xz
+cd man-db-2.9.0
+sed -i '/find/s@$1/usr@@' init/systemd/man-db.service.in
+./configure --prefix=$1/usr --docdir=$1/usr/share/doc/man-db-2.9.0 --sysconfdir=$1/etc --disable-setuid --enable-cache-owner=bin --with-browser=$1/usr/bin/lynx --with-vgrind=$1/usr/bin/vgrind --with-grap=$1/usr/bin/grap --host=$4
+make -j$2
+make install
+cd ..
+rm -rf man-db-2.9.0
+
+

@@ -1,0 +1,21 @@
+#!/bin/bash
+tar xf ncurses-6.2.tar.gz
+cd ncurses-6.2
+sed -i '/LIBTOOL_INSTALL/d' c++/Makefile.in
+# strip manually, or the build will fail
+./configure --prefix=$1/usr --mandir=$1/usr/share/man --with-shared --without-debug --without-normal --enable-pc-files --enable-widec --disable-stripping --with-pkg-config=$1/usr/lib/pkgconfig --host=$4
+make -j$2
+make install
+mv -v $1/usr/lib/libncursesw.so.6* $1/lib
+ln -sfv ../../lib/$(readlink $1/usr/lib/libncursesw.so) $1/usr/lib/libncursesw.so
+for lib in ncurses form panel menu ; do
+    rm -vf $1/usr/lib/lib${lib}.so;
+    echo "INPUT(-l${lib}w)" > $1/usr/lib/lib${lib}.so;
+    ln -sfv ${lib}w.pc  $1/usr/lib/pkgconfig/${lib}.pc;
+done
+rm -vf $1/usr/lib/libcursesw.so
+echo "INPUT(-lncursesw)" > $1/usr/lib/libcursesw.so
+ln -sfv libncurses.so $1/usr/lib/libcurses.so
+cd ..
+rm -rf ncurses-6.2
+

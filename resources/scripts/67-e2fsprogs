@@ -1,0 +1,14 @@
+#!/bin/bash
+tar xf e2fsprogs-1.45.5.tar.gz 
+cd e2fsprogs-1.45.5
+mkdir -v build
+cd build
+../configure --prefix=$1/usr --bindir=$1/bin --with-root-prefix="" --enable-elf-shlibs --disable-libblkid --disable-libuuid --disable-uuidd --disable-fsck --host=$4
+make -j$2
+make install
+chmod -v u+w $1/usr/lib/{libcom_err,libe2p,libext2fs,libss}.a
+gunzip -v $1/usr/share/info/libext2fs.info.gz
+install-info --dir-file=$1/usr/share/info/dir $1/usr/share/info/libext2fs.info
+cd ..
+cd ..
+rm -rf e2fsprogs-1.45.5

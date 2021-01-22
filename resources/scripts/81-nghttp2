@@ -1,0 +1,8 @@
+#!/bin/bash
+tar xf nghttp2-1.40.0.tar.xz
+cd nghttp2-1.40.0
+./configure --prefix=$1/usr --disable-static --enable-lib-only --host=$4
+make -j$2
+make install
+cd ..
+rm -rf nghttp2-1.40.0

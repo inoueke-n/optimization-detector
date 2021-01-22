@@ -1,0 +1,15 @@
+#!/bin/bash
+tar xf iproute2-5.5.0.tar.xz
+cd iproute2-5.5.0
+sed -i /ARPD/d Makefile
+rm -fv man/man8/arpd.8
+sed -i 's/.m_ipt.o//' tc/Makefile
+sed -ie "s/O2/O$3/g" Makefile
+sed -ie "s/gcc/$CC/g" Makefile
+make -j$2 PREFIX=$1/usr SBINDIR=$1/sbin
+make DOCDIR=$1/usr/share/doc/iproute2-5.5.0 PREFIX=$1/usr SBINDIR=$1/sbin
+install
+cd ..
+rm -rf iproute2-5.5.0
+
+

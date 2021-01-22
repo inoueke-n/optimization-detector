@@ -1,0 +1,12 @@
+#!/bin/bash
+tar xf findutils-4.7.0.tar.xz 
+cd findutils-4.7.0
+./configure --prefix=$1/usr --localstatedir=$1/var/lib/locate --host=$4
+make -j$2
+make install
+mv -v $1/usr/bin/find $1/bin
+sed -i 's|find:=${BINDIR}|find:=/bin|' $1/usr/bin/updatedb
+cd ..
+rm -rf findutils-4.7.0
+
+

@@ -1,0 +1,12 @@
+#!/bin/bash
+tar xf zstd-1.4.4.tar.gz 
+cd zstd-1.4.4
+make -j$2
+make prefix=$1/usr install
+rm -v $1/usr/lib/libzstd.a
+mv -v $1/usr/lib/libzstd.so.* $1/lib
+ln -sfv ../../lib/$(readlink $1/usr/lib/libzstd.so) $1/usr/lib/libzstd.so
+cd ..
+rm -rf zstd-1.4.4
+
+

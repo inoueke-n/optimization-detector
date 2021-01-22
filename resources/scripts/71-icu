@@ -1,0 +1,13 @@
+#!/bin/bash
+tar xf icu4c-65_1-src.tgz
+cd icu
+mkdir {current,cross}
+cd current
+CC=gcc CXX=g++ CXXFLAGS="$CXXFLAGS -std=c++11" ../source/configure
+make -j$2
+cd ../cross
+CXXFLAGS="$CXXFLAGS -std=c++11" ../source/configure --with-cross-build=$1/sources/icu/current --prefix=$1/usr --host=$4
+make -j$2
+make install
+cd ../..
+rm -rf icu

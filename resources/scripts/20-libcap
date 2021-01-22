@@ -1,0 +1,11 @@
+#!/bin/bash
+tar xf libcap-2.31.tar.xz
+cd libcap-2.31
+sed -i '/install.*STA...LIBNAME/d' libcap/Makefile
+sed -ie "s/O2/O$3/g" Make.Rules
+sed -ie "s/gcc/$CC/g" Make.Rules
+make lib=$1/lib prefix=$1/usr -j$2
+make lib=$1/lib prefix=$1/usr install
+cd ..
+rm -rf libcap-2.31
+

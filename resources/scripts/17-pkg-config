@@ -1,0 +1,9 @@
+#!/bin/bash
+tar xf pkg-config-0.29.2.tar.gz
+cd pkg-config-0.29.2
+./configure --prefix=$1/usr --with-internal-glib --disable-host-tool --docdir=$1/usr/share/doc/pkg-config-0.29.2 --host=$4
+make -j$2
+make install
+cd ..
+rm -rf pkg-config-0.29.2
+

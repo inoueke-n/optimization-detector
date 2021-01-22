@@ -1,0 +1,34 @@
+#!/bin/bash
+tar xf openssl-1.1.1d.tar.gz
+cd openssl-1.1.1d
+MACHINE=linux-generic64
+case $4 in
+    aarch64*)
+        MACHINE=linux-aarch64;;
+    alpha*)
+        MACHINE=linux-alpha-gcc;;
+    ia64*)
+        MACHINE=linux-ia64;;
+    mips64*)
+        MACHINE=linux-mips64;;
+    mips*)
+        MACHINE=linux-mips32;;
+    ppc64le*)
+        MACHINE=linux-ppc64le;;
+    i386*)
+        MACHINE=linux-x86;;
+    x86_64*)
+        MACHINE=linux-x86_64;;
+    s390*)
+        MACHINE=linux-s390x;;
+    *) # other archs just default to generic
+        MACHINE=linux-generic64;;
+esac
+./Configure $MACHINE --prefix=$1/usr --openssldir=$1/etc/ssl --libdir=lib shared zlib-dynamic
+make -j$2
+sed -i '/INSTALL_LIBS/s/libcrypto.a libssl.a//' Makefile
+make MANSUFFIX=ssl install
+cd ..
+rm -rf openssl-1.1.1d
+
+

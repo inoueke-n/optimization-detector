@@ -1,0 +1,18 @@
+#!/bin/bash
+tar xf bzip2-1.0.8.tar.gz
+cd bzip2-1.0.8
+patch -Np1 -i ../bzip2-1.0.8-install_docs-1.patch
+sed -i 's@\(ln -s -f \)$(PREFIX)/bin/@\1@' Makefile
+sed -i "s@(PREFIX)/man@(PREFIX)/share/man@g" Makefile
+sed -i "s/O2/O$3/g" Makefile-libbz2_so
+sed -i "s/O2/O$3/g" Makefile
+sed -i "s/gcc/$4-gcc/g" Makefile-libbz2_so
+sed -i "s/gcc/$4-gcc/g" Makefile
+make -f Makefile-libbz2_so -j$2
+make clean
+make -j2 PREFIX=$1/usr install
+cp -v bzip2-shared $1/bin/bzip2
+cp -av libbz2.so* $1/lib
+cd ..
+rm -rf bzip2-1.0.8
+

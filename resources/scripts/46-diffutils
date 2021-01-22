@@ -1,0 +1,10 @@
+#!/bin/bash
+tar xf diffutils-3.7.tar.xz 
+cd diffutils-3.7
+./configure --prefix=$1/usr --host=$4
+make -j$2
+make install
+cd ..
+rm -rf diffutils-3.7
+
+

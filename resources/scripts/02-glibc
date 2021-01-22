@@ -1,0 +1,13 @@
+#!/bin/bash
+tar xf glibc-2.31.tar.xz
+cd glibc-2.31
+patch -Np1 -i ../glibc-2.31-fhs-1.patch
+mkdir -v build
+cd       build
+CFLAGS="-U_FORTIFY_SOURCE -O2" ../configure --prefix=$1/usr --disable-werror --enable-kernel=3.2 --enable-stack-protector=strong --with-headers=$1/usr/include --host=$4
+make -j$2
+touch $1/etc/ld.so.conf
+sed '/test-installation/s@$(PERL)@echo not running@' -i ../Makefile
+make install
+cd ../..
+rm -rf glibc-2.31

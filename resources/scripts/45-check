@@ -1,0 +1,10 @@
+#!/bin/bash
+tar xf check-0.14.0.tar.gz 
+cd check-0.14.0
+./configure --prefix=$1/usr --host=$4
+make -j$2
+make docdir=$1/usr/share/doc/check-0.14.0 install
+cd ..
+rm -rf check-0.14.0
+
+

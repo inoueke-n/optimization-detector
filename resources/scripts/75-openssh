@@ -1,0 +1,10 @@
+#!/bin/bash
+tar xf  openssh-8.2p1.tar.gz
+cd openssh-8.2p1
+./configure --prefix=$1/usr --sysconfdir=$1/etc/ssh --with-md5-passwords --with-privsep-path=$1/var/lib/sshd --host=$4
+make -j$2
+# manual copy because make install runs the wrong strip and tries to execute ssh-keygen
+mv scp sftp $1/usr/bin
+mv ssh{,d,-add,-agent,-keygen,-keyscan} $1/usr/bin
+cd ..
+rm -rf openssh-8.2p1

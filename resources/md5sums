@@ -11,10 +11,12 @@ c1545da2ad7d78574b52c465ec077ed9  bash-5.0-upstream_fixes-1.patch
 49fc2cf23e31e697d5072835e1662a97  bison-3.5.2.tar.xz
 6a5ac7e89b791aae556de0f745916f7f  bzip2-1.0.8-install_docs-1.patch
 67e051268d0c475ea773822f7500d0e5  bzip2-1.0.8.tar.gz
+d2391da274653f7643270623e822dff7  c-ares-1.15.0.tar.gz
 270e82a445be6026040267a5e11cc94b  check-0.14.0.tar.gz
 d24e76c567a8419374aab108a61f3d1a  cmake-v3.15.7.tar.gz
 a9404fb575dfd5514f3c8f4120f9ca7d  coreutils-8.31-i18n-1.patch
 0009a224d8e288e8ec406ef0161f9293  coreutils-8.31.tar.xz
+ce97d54a5f93607714ceb7f46a0a28f3  curl-7.68.0.tar.xz
 2dbeae80dfc9e3632320c6a53d5e8890  dbus-1.12.16.tar.gz
 e1b07516533f351b3aba3423fafeffd6  dejagnu-1.6.2.tar.gz
 4824adc0e95dbbf11dfbdfaad6a1e461  diffutils-3.7.tar.xz
@@ -23,6 +25,7 @@ e1b07516533f351b3aba3423fafeffd6  dejagnu-1.6.2.tar.gz
 dedfb1964f6098fe9320de827957331f  eudev-3.2.9.tar.gz
 d2384fa607223447e713e1b9bd272376  expat-2.2.9.tar.xz
 00fce8de158422f5ccd2666512329bd2  expect5.45.4.tar.gz
+348956fc2faa57a2f79bbb84ded9fbc3  ffmpeg-4.2.2.tar.xz
 3217633ed09c7cd35ed8d04191675574  file-5.38.tar.gz
 731356dec4b1109b812fecfddfead6b2  findutils-4.7.0.tar.xz
 2882e3179748cc9f9c23ec593d6adc8d  flex-2.6.4.tar.gz
@@ -30,15 +33,18 @@ f9db3f6715207c6f13719713abc9c707  gawk-5.0.1.tar.xz
 3818ad8600447f05349098232c2ddc78  gcc-9.2.0.tar.xz
 988dc82182121c7570e0cb8b4fcd5415  gdbm-1.18.1.tar.gz
 9ed9e26ab613b668e0026222a9c23639  gettext-0.20.1.tar.xz
+eab5cdee7c478c0804346d8835e314c9  git-2.25.0.tar.xz
 9a5997c3452909b1769918c759eff8a2  glibc-2.31-fhs-1.patch
 78a720f17412f3c3282be5a6f3363ec6  glibc-2.31.tar.xz
 a325e3f09e6d91e62101e59f9bda3ec1  gmp-6.2.0.tar.xz
+a23900f14980a467bdce3a0fd31dfa18  gnutls-3.6.12.tar.xz
 9e251c0a618ad0824b51117d5d9db87e  gperf-3.1.tar.gz
 111b117d22d6a7d049d6ae7505e9c4d2  grep-3.4.tar.xz
 08fb04335e2f5e73f23ea4c3adbf0c5f  groff-1.22.4.tar.gz
 5aaca6713b47ca2456d8324a58755ac7  grub-2.04.tar.xz
 691b1221694c3394f1c537df4eee39d3  gzip-1.10.tar.xz
 3ba3afb1d1b261383d247f46cb135ee8  iana-etc-2.30.tar.bz2
+d1ff436e26cabcb28e6cb383d32d1339  icu4c-65_1-src.tgz
 87fef1fa3f603aef11c41dcc097af75e  inetutils-1.9.4.tar.xz
 12e517cac2b57a0121cda351570f1e63  intltool-0.51.0.tar.gz
 ee8e2cdb416d4a8ef39525d39ab7c2d0  iproute2-5.5.0.tar.xz
@@ -51,6 +57,8 @@ e9249541960df505e4dfac0c32369372  lfs-bootscripts-20191031.tar.xz
 6313289e32f1d38a9df4770b014a2ca7  libffi-3.3.tar.gz
 169de4cc1f6f7f7d430a5bed858b2fd3  libpipeline-1.5.2.tar.gz
 1bfb9b923f2c1339b4d2ce1807064aa5  libtool-2.4.6.tar.xz
+a10243f691f7707f1d903d80e347b549  libuv-v1.34.2.tar.gz
+10942a1dc23137a8aa07f0639cbfece5  libxml2-2.9.10.tar.gz
 3ea50025d8c679a327cf2fc225d81a46  linux-5.5.3.tar.xz
 ea075bc5ba3930739ae7e1ae790eb97f  llvm-project-10.0.0.tar.xz
 730bb15d96fffe47e148d1e09235af82  m4-1.4.18.tar.xz
@@ -61,7 +69,10 @@ da25a4f8dfed0a34453c90153b98752d  man-pages-5.05.tar.xz
 4125404e41e482ec68282a2e687f6c73  mpc-1.1.0.tar.gz
 320fbc4463d4c8cb1e566929d8adc4f8  mpfr-4.0.2.tar.xz
 e812da327b1c2214ac1aed440ea3ae8d  ncurses-6.2.tar.gz
+0e5707b418c3826768d41130fbe4ee86  nettle-3.5.1.tar.gz
 cf1d964113a171da42a8940e7607e71a  ninja-1.10.0.tar.gz
+8d1a6b96760254e4dd142d7176e8fb7c  nghttp2-1.40.0.tar.xz
+3076e6413e8dbe56d33848c1054ac091  openssh-8.2p1.tar.gz
 3be209000dbc7e1b95bcdf47980a3baa  openssl-1.1.1d.tar.gz
 78ad9937e4caadcba1526ef1853730d5  patch-2.7.6.tar.xz
 f399f3aaee90ddcff5eadd3bccdaacc0  perl-5.30.1.tar.xz
@@ -84,6 +95,7 @@ f6987e6dfdb2eb83a1b5076a50b80894  tzdata2019c.tar.gz
 27cd82f9a61422e186b9d6759ddf1634  udev-lfs-20171102.tar.xz
 7f64882f631225f0295ca05080cee1bf  util-linux-2.35.1.tar.xz
 f5337b1170df90e644a636539a0313a3  vim-8.2.0190.tar.gz
+097ff1a324ae02e0a3b0369f07a7544a  which-2.21.tar.gz
 003e4d0b1b1899fc6e3000b24feddf7c  xz-5.2.4.tar.xz
 85adef240c5f370b308da8c938951a68  zlib-1.2.11.tar.xz
 487f7ee1562dee7c1c8adf85e2a63df9  zstd-1.4.4.tar.gz

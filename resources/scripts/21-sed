@@ -1,0 +1,12 @@
+#!/bin/bash
+tar xf sed-4.8.tar.xz
+cd sed-4.8
+sed -i 's/usr/tools/' build-aux/help2man
+sed -i 's/testsuite.panic-tests.sh//' Makefile.in
+./configure --prefix=$1/usr --bindir=$1/bin --host=$4
+make -j$2
+make install
+install -d -m755 $1/usr/share/doc/sed-4.8
+cd ..
+rm -rf sed-4.8
+

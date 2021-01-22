@@ -1,0 +1,11 @@
+#!/bin/bash
+tar xf texinfo-6.7.tar.xz
+cd texinfo-6.7
+./configure --prefix=$1/usr --disable-static --host=$4
+make -j$2
+make install
+make TEXMF=$1/usr/share/texmf install-tex
+cd ..
+rm -rf texinfo-6.7
+
+

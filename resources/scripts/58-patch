@@ -1,0 +1,10 @@
+#!/bin/bash
+tar xf patch-2.7.6.tar.xz
+cd patch-2.7.6
+./configure --prefix=$1/usr --host=$4
+make -j$2
+make install
+cd ..
+rm -rf patch-2.7.6
+
+

@@ -179,11 +179,15 @@ def check_host_system():
     """
     print("Checking host system... ", end="", flush=True)
     set = {("bash", "bash"),
+           ("autoreconf","autoconf"),
+           ("automake", "automake"),
            ("bison", "bison"),
            ("bzip2", "bzip2"),
            ("chown", "coreutils"),
            ("diff", "diffutils"),
            ("find", "findutils"),
+           ("gcc", "gcc"),
+           ("g++", "g++"),
            ("gawk", "gawk"),
            ("grep", "grep"),
            ("gzip", "gzip"),
@@ -196,6 +200,7 @@ def check_host_system():
            ("tar", "tar"),
            ("makeinfo", "texinfo"),
            ("xz", "xz"),
+           ("cmake", "cmake"),
            ("meson", "meson"),
            ("ninja", "ninja-build")
            }
@@ -306,6 +311,21 @@ def prepare_folder(args: Namespace) -> Namespace:
         println_warn(msg)
     return args
 
+def set_build_tools(triplet: str) -> Dict:
+    env = os.environ.copy()
+    env["CC"] = triplet + "-gcc"
+    env["CXX"] = triplet + "-g++"
+    env["PKG_CONFIG"] = triplet + "-pkg-config"
+    env["LD"] = triplet + "-ld"
+    env["AR"] = triplet + "-ar"
+    env["AS"] = triplet + "-as"
+    env["NM"] = triplet + "-nm"
+    env["STRIP"] = triplet + "-strip"
+    env["RANLIB"] = triplet + "-ranlib"
+    env["OBJDUMP"] = triplet + "-objdump"
+    env["OBJCOPY"] = triplet + "-objcopy"
+    env["READELF"] = triplet + "-readelf"
+    return env
 
 def build(args: Namespace):
     """
@@ -319,13 +339,13 @@ def build(args: Namespace):
         os.symlink("/bin/true", mt)
         for opt in args.flags:
             err = []
-            myenv = os.environ.copy()
-            myenv["CC"] = triplet + "-gcc"
-            myenv["CXX"] = triplet + "-g++"
-            myenv["PKG_CONFIG"] = triplet + "-pkg-config"
-            myenv["CFLAGS"] = "-O" + opt
-            myenv["LDFLAGS"] = "-L" + os.path.join(args.build_dir, "lib")
-            myenv["LDFLAGS"] += " -L" + os.path.join(args.build_dir, "usr/lib")
+            myenv = set_build_tools(triplet)
+            myenv["CFLAGS"] = " -O" + opt
+            myenv["PKG_CONFIG_PATH"] = os.path.join(args.build_dir, "/usr/lib/pkgconfig")
+            # myenv["CFLAGS"] = "-O" + opt + " -I" + os.path.join(args.build_dir,
+            #                                                     "usr/include")
+            # myenv["LDFLAGS"] = "-L" + os.path.join(args.build_dir, "lib")
+            # myenv["LDFLAGS"] += " -L" + os.path.join(args.build_dir, "usr/lib")
             myenv["CXXFLAGS"] = myenv["CFLAGS"]
             myenv["PATH"] = myenv["PATH"] + ":" + args.build_dir  # for mt
             print(f"Building {Color.BOLD}{triplet}{Color.END} with "

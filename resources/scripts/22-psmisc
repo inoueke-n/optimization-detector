@@ -1,0 +1,10 @@
+#!/bin/bash
+tar xf psmisc-23.2.tar.xz
+cd psmisc-23.2
+./configure --prefix=$1/usr --host=$4
+sed -ie "s/O2/O$3/g" Makefile
+make -j$2
+make install
+cd ..
+rm -rf psmisc-23.2
+

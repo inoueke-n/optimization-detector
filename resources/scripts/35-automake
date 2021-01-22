@@ -1,0 +1,10 @@
+#!/bin/bash
+tar xf automake-1.16.1.tar.xz
+cd automake-1.16.1
+./configure --prefix=$1/usr --docdir=$1/usr/share/doc/automake-1.16.1 --host=$4
+make -j$2
+make install
+cd ..
+rm -rf automake-1.16.1
+
+

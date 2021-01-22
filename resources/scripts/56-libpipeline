@@ -1,0 +1,10 @@
+#!/bin/bash
+tar xf libpipeline-1.5.2.tar.gz
+cd libpipeline-1.5.2
+./configure --prefix=$1/usr --host=$4
+make -j$2
+make install
+cd ..
+rm -rf libpipeline-1.5.2
+
+
