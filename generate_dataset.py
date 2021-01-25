@@ -198,7 +198,7 @@ def check_host_system():
            ("python3", "python"),
            ("sed", "sed"),
            ("tar", "tar"),
-           ("makeinfo", "texinfo"),
+           # ("makeinfo", "texinfo"), #TODO: maybe this is not needed
            ("xz", "xz"),
            ("cmake", "cmake"),
            ("meson", "meson"),
