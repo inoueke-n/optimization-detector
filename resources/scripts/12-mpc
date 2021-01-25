@@ -1,7 +1,7 @@
 #!/bin/bash
 tar xf mpc-1.1.0.tar.gz 
 cd mpc-1.1.0
-CFLAGS="$CFLAGS --sysroot=$1" ./configure --prefix=$1/usr --disable-static --docdir=$1/usr/share/doc/mpc-1.1.0 --host=$4
+CFLAGS="$CFLAGS --sysroot=$1" ./configure --prefix=$1/usr --disable-static --host=$4
 make -j$2
 make install
 cd ..

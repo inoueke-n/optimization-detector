@@ -1,7 +1,7 @@
 #!/bin/bash
 tar xf mpfr-4.0.2.tar.xz 
 cd mpfr-4.0.2
-CFLAGS="$CFLAGS --sysroot=$1" ./configure --prefix=$1/usr --disable-static --enable-thread-safe --docdir=$1/usr/share/doc/mpfr-4.0.2 --host=$4
+CFLAGS="$CFLAGS --sysroot=$1" ./configure --prefix=$1/usr --disable-static --enable-thread-safe --host=$4
 make -j$2
 make install
 cd ..

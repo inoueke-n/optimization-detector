@@ -1,7 +1,7 @@
 #!/bin/bash
 tar xf gettext-0.20.1.tar.xz
 cd gettext-0.20.1
-./configure --prefix=$1/usr --disable-static --docdir=$1/usr/share/doc/gettext-0.20.1 --host=$4
+./configure --prefix=$1/usr --disable-static --host=$4
 make -j$2
 make install
 cd ..

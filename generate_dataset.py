@@ -315,7 +315,6 @@ def set_build_tools(triplet: str) -> Dict:
     env = os.environ.copy()
     env["CC"] = triplet + "-gcc"
     env["CXX"] = triplet + "-g++"
-    env["PKG_CONFIG"] = triplet + "-pkg-config"
     env["LD"] = triplet + "-ld"
     env["AR"] = triplet + "-ar"
     env["AS"] = triplet + "-as"
@@ -342,10 +341,6 @@ def build(args: Namespace):
             myenv = set_build_tools(triplet)
             myenv["CFLAGS"] = " -O" + opt
             myenv["PKG_CONFIG_PATH"] = os.path.join(args.build_dir, "/usr/lib/pkgconfig")
-            # myenv["CFLAGS"] = "-O" + opt + " -I" + os.path.join(args.build_dir,
-            #                                                     "usr/include")
-            # myenv["LDFLAGS"] = "-L" + os.path.join(args.build_dir, "lib")
-            # myenv["LDFLAGS"] += " -L" + os.path.join(args.build_dir, "usr/lib")
             myenv["CXXFLAGS"] = myenv["CFLAGS"]
             myenv["PATH"] = myenv["PATH"] + ":" + args.build_dir  # for mt
             print(f"Building {Color.BOLD}{triplet}{Color.END} with "

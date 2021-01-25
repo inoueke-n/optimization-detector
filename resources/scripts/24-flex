@@ -2,7 +2,7 @@
 tar xf flex-2.6.4.tar.gz
 cd flex-2.6.4
 sed -i "/math.h/a #include <malloc.h>" src/flexdef.h
-HELP2MAN=/usr/bin/true ./configure --prefix=$1/usr --docdir=$1/usr/share/doc/flex-2.6.4 --host=$4
+HELP2MAN=/usr/bin/true ./configure --prefix=$1/usr --host=$4
 sed -ie "s/O2/O$3/g" Makefile
 make -j$2
 make install

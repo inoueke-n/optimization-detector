@@ -1,7 +1,7 @@
 #!/bin/bash
 tar xf elfutils-0.178.tar.bz2
 cd elfutils-0.178
-./configure --prefix=$1/usr --disable-debuginfod --host=$4
+CFLAGS="$CLFAGS --sysroot=$1" ./configure --prefix=$1/usr --disable-debuginfod --host=$4
 make -j$2
 make -C libelf install
 install -vm644 config/libelf.pc $1/usr/lib/pkgconfig

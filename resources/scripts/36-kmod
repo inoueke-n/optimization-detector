@@ -1,7 +1,7 @@
 #!/bin/bash
 tar xf kmod-26.tar.xz
 cd kmod-26
-./configure --prefix=$1/usr --bindir=$1/bin --sysconfdir=$1/etc --with-rootlibdir=$1/lib --with-xz --with-zlib --host=$4
+./configure --prefix=$1/usr --bindir=$1/bin --sysconfdir=$1/etc --with-rootlibdir=$1/lib --with-xz --with-zlib --with-bashcompletiondir=$1/usr/share/bash-completion/completions --host=$4
 make -j$2
 make install
 for target in depmod insmod lsmod modinfo modprobe rmmod; do ln -sfv ../bin/kmod $1/sbin/$target; done

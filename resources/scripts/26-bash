@@ -2,7 +2,7 @@
 tar xf bash-5.0.tar.gz
 cd bash-5.0
 patch -Np1 -i ../bash-5.0-upstream_fixes-1.patch
-./configure --prefix=$1/usr --docdir=$1/usr/share/doc/bash-5.0 --without-bash-malloc --with-installed-readline --host=$4
+./configure --prefix=$1/usr --disable-doc --without-bash-malloc --with-installed-readline --host=$4
 make -j$2
 make install
 cd ..

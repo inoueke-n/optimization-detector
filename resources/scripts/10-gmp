@@ -1,7 +1,7 @@
 #!/bin/bash
 tar xf gmp-6.2.0.tar.xz 
 cd gmp-6.2.0
-./configure --prefix=$1/usr --enable-cxx --disable-static --docdir=$1/usr/share/doc/gmp-6.2.0 --host=$4
+./configure --prefix=$1/usr --enable-cxx --disable-static --host=$4
 make clean # necessary because glibc is in a non-standard path
 make -j$2
 make install
