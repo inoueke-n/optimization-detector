@@ -1,9 +1,8 @@
 #!/bin/bash
 tar xf coreutils-8.31.tar.xz 
 cd coreutils-8.31
-sed -i '/test.lock/s/^/#/' gnulib-tests/gnulib.m
 autoreconf -fiv
-FORCE_UNSAFE_CONFIGURE=1 ./configure --prefix=$1/usr --enable-no-install-program=kill,uptime --host=$4
+CFLAGS="$CFLAGS --sysroot=$1" FORCE_UNSAFE_CONFIGURE=1 ./configure --prefix=$1/usr --enable-no-install-program=kill,uptime --host=$4
 make -j$2
 make install
 mv -v $1/usr/bin/{cat,chgrp,chmod,chown,cp,date,dd,df,echo} $1/bin

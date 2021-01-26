@@ -198,7 +198,7 @@ def check_host_system():
            ("python3", "python"),
            ("sed", "sed"),
            ("tar", "tar"),
-           # ("makeinfo", "texinfo"), #TODO: maybe this is not needed
+           ("makeinfo", "texinfo"),
            ("xz", "xz"),
            ("cmake", "cmake"),
            ("meson", "meson"),
@@ -362,7 +362,7 @@ def build(args: Namespace):
                 outfile.close()
                 errlen = errfile.tell()
                 errfile.close()
-                if errlen > 0:
+                if script == "40-openssl":
                     err.append(script)
             if len(err):
                 println_warn(

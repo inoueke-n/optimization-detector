@@ -1,7 +1,7 @@
 #!/bin/bash
 tar xf less-551.tar.gz 
 cd less-551
-./configure --prefix=$1/usr --sysconfdir=$1/etc --host=$4
+CFLAGS="$CFLAGS --sysroot=$1 -I$1/usr/include/ncursesw" LDFLAGS="$LDFLAGS --sysroot=$1" ./configure --prefix=$1/usr --sysconfdir=$1/etc --host=$4
 make -j$2
 make install
 cd ..

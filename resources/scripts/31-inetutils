@@ -2,7 +2,7 @@
 tar xf inetutils-1.9.4.tar.xz 
 cd inetutils-1.9.4
 ./configure --prefix=$1/usr --localstatedir=$1/var --disable-logger --disable-whois --disable-rcp --disable-rexec --disable-rlogin --disable-rsh --disable-servers --host=$4
-sed '1 i #define PATH_PROCNET_DEV "/proc/net/dev"' -i ifconfig/system/linux.c # dirty hack to overcome the missing /proc binding
+sed -i '1 i #define PATH_PROCNET_DEV "/proc/net/dev"' ifconfig/system/linux.c # dirty hack to overcome the missing /proc binding
 make -j$2
 make install
 cd ..

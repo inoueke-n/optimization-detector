@@ -1,14 +1,18 @@
 #!/bin/bash
 tar xf iproute2-5.5.0.tar.xz
 cd iproute2-5.5.0
+sed -i '254d;246,252d' configure # remove selinux (this configure picks up any selinux it finds)
+sed -i '317d;309,315d' configure # same as above, with libcap this time
 sed -i /ARPD/d Makefile
 rm -fv man/man8/arpd.8
 sed -i 's/.m_ipt.o//' tc/Makefile
 sed -ie "s/O2/O$3/g" Makefile
 sed -ie "s/gcc/$CC/g" Makefile
-make -j$2 PREFIX=$1/usr SBINDIR=$1/sbin
-make DOCDIR=$1/usr/share/doc/iproute2-5.5.0 PREFIX=$1/usr SBINDIR=$1/sbin
-install
+make -j$2
+>&2 echo "##### It is expected for make to generate errors if crosscompiling #####"
+# manually copy because the install script tries to execute the newly built bins
+cp -v bridge/bridge tc/tc $1/usr/bin # bridge should go in /sbin but who cares, this system's not gonna run
+cp -v ip/{ifcfg,ip,route{f,l},rt{mon,pr}} misc/{lnstat,nstat,ss} $1/usr/bin
 cd ..
 rm -rf iproute2-5.5.0
 

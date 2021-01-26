@@ -4,7 +4,6 @@ cd grub-2.04
 ./configure --prefix=$1/usr --sbindir=$1/sbin --sysconfdir=$1/etc --disable-efiemu --disable-werror --host=$4
 make -j$2
 make install
-mv -v $1/etc/bash_completion.d/grub $1/usr/share/bash-completion/completions
 cd ..
 rm -rf grub-2.04
 

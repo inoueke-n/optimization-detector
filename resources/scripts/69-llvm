@@ -9,7 +9,7 @@ make llvm-tblgen clang-tblgen -j$2
 chmod +x bin/{llvm,clang}-tblgen
 cd ..
 cd build
-CFLAGS="$CFLAGS -I$1/sources/llvm-project-10.0.0/headers/usr/local/include" cmake -DCMAKE_SYSROOT=$1 -DLLVM_ENABLE_PROJECTS="libcxx;libcxxabi;clang;compiler-rt;lld;" -DCMAKE_INSTALL_PREFIX="$1/usr" -DLLVM_DEFAULT_TARGET_TRIPLE=$4 -DLLVM_TABLEGEN=../tblgen/bin/llvm-tblgen -DCLANG_TABLEGEN=../tblgen/bin/clang-tblgen -G Ninja ../llvm/
+CFLAGS="$CFLAGS -I$1/sources/llvm-project-10.0.0/headers/usr/local/include" cmake -DCMAKE_SYSROOT=$1 -DCMAKE_BUILD_TYPE="Release" -DLLVM_ENABLE_PROJECTS="libcxx;libcxxabi;clang;compiler-rt;lld;" -DCMAKE_INSTALL_PREFIX="$1/usr" -DLLVM_DEFAULT_TARGET_TRIPLE=$4 -DLLVM_TABLEGEN=../tblgen/bin/llvm-tblgen -DCLANG_TABLEGEN=../tblgen/bin/clang-tblgen -G Ninja ../llvm/
 cmake --build .
 cmake --install .
 cd ..

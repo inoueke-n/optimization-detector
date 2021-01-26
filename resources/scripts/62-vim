@@ -1,26 +1,19 @@
 #!/bin/bash
 tar xf vim-8.2.0190.tar.gz 
 cd vim-8.2.0190
-echo '#define SYS_VIMRC_FILE "/etc/vimrc"' >> src/feature.h
-./configure --prefix=$1/usr --host=$4
+ac_cv_sizeof_int=4                 \
+vim_cv_getcwd_broken=no            \
+vim_cv_memmove_handles_overlap=yes \
+vim_cv_stat_ignores_slash=yes      \
+vim_cv_tgetent=zero                \
+vim_cv_terminfo=yes                \
+vim_cv_toupper_broken=no           \
+vim_cv_tty_group=world             \
+CFLAGS="$CFLAGS --sysroot=$1" LDFLAGS="$LDFLAGS --sysroot=$1" ./configure --prefix=$1/usr --host=$4 --with-tlib=ncurses
 make -j$2
 make install
 ln -sv vim $1/usr/bin/vi
 for L in $1/usr/share/man/{,*/}man1/vim.1; do ln -sv vim.1 $(dirname $L)/vi.1; done
-cat > $1/etc/vimrc << "EOF"
-" Begin /etc/vimrc
-" Ensure defaults are set before customizing settings, not after
-source $VIMRUNTIME/defaults.vim
-let skip_defaults_vim=1 
-set nocompatible
-set backspace=2
-set mouse=
-syntax on
-if (&term == "xterm") || (&term == "putty")
- set background=dark
-endif
-" End /etc/vimrc
-EOF
 cd ..
 rm -rf vim-8.2.0190
 

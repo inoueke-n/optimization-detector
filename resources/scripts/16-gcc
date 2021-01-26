@@ -1,15 +1,15 @@
 #!/bin/bash
-tar xf gcc-9.2.0.tar.xz 
-cd gcc-9.2.0
-sed -e '1161 s|^|//|' -i libsanitizer/sanitizer_common/sanitizer_platform_limits_posix.cc
-mkdir -v build
-cd build
-SED=sed CFLAGS="$CFLAGS" ../configure --prefix=$1/usr --enable-languages=c,c++ --disable-multilib --disable-bootstrap --host=$4 --with-zlib=$1/usr --with-gmp=$1/usr --with-mpfr=$1/usr --with-mpc=$1/usr
-sed -ie "s/O2/O$3/g" Makefile
-make -j$2
-make install
-install -v -dm755 $1/usr/lib/bfd-plugins
-cd ..
-cd ..
-rm -rf gcc-9.2.0
+#tar xf gcc-9.2.0.tar.xz
+#cd gcc-9.2.0
+#sed -e '1161 s|^|//|' -i libsanitizer/sanitizer_common/sanitizer_platform_limits_posix.cc
+#mkdir -v build
+#cd build
+#SED=sed CFLAGS="$CFLAGS" ../configure --prefix=$1/usr --enable-languages=c,c++ --disable-multilib --disable-bootstrap --host=$4 --with-zlib=$1/usr --with-gmp=$1/usr --with-mpfr=$1/usr --with-mpc=$1/usr
+#sed -ie "s/O2/O$3/g" Makefile
+#make -j$2
+#make install
+#install -v -dm755 $1/usr/lib/bfd-plugins
+#cd ..
+#cd ..
+#rm -rf gcc-9.2.0
 

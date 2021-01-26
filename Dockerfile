@@ -4,13 +4,13 @@ RUN apt-get -y install   \
     build-essential=12.6 \
     autoconf=2.69-11     \
     automake=1:1.16.1-4  \
+    texinfo=6.5.0.dfsg.1-4+b1 \
     m4=1.4.18-2          \
     python3=3.7.3-1      \
     python3-pip=18.1-5   \
     cmake=3.13.4-1       \
     meson=0.49.2-1       \
     ninja-build=1.8.2-1
-RUN pip3 install --upgrade wheel==0.36.2
 RUN pip3 install tqdm==4.53.0
 COPY resources /build/resources
 COPY generate_dataset.py /build
