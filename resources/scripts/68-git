@@ -1,0 +1,10 @@
+#!/bin/bash
+tar xf git-2.25.0.tar.xz
+cd git-2.25.0
+sed -i '993,1046d' configure.ac # remove some checks that fails to execute while cross compiling
+autoconf
+CFLAGS="$CFLAGS --sysroot=$1" ./configure --prefix=$1/usr --with-gitconfig=$1/etc/gitconfig --with-curl --with-expat --with-libpcre2 --with-openssl --without-iconv --host=$4
+make NO_NSEC=1 CURL_LDFLAGS="-lcurl" -j$2 # NO_NSEC=1 refers to the removed checks
+make NO_NSEC=1 CURL_LDFLAGS="-lcurl" install
+cd ..
+rm -rf git-2.25.0

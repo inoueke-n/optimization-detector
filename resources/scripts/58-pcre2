@@ -1,0 +1,8 @@
+#!/bin/bash
+tar xf pcre2-10.34.tar.bz2
+cd pcre2-10.34
+CFLAGS="$CFLAGS -I$1/usr/include -L$1/usr/lib" ./configure --prefix=$1/usr --enable-unicode --enable-pcre2-16 --enable-pcre-32 --enable-pcre2grep-libz --enable-pcre2grep-libbz2 --enable-pcre2test-libreadline --disable-static --host=$4
+make -j$2
+make install
+cd ..
+rm -rf pcre2-10.34

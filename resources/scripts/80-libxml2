@@ -1,8 +1,0 @@
-#!/bin/bash
-tar xf libxml2-2.9.10.tar.gz
-cd libxml2-2.9.10
-CFLAGS="-O$3 -L$1/usr/lib -L$1/lib" LDFLAGS="-L$1/usr/lib -L$1/lib" ./configure --prefix=$1/usr --disable-static --with-history --with-python=$1/usr/bin/python3 --host=$4
-make -j$2
-make install
-cd ..
-rm -rf libxml2-2.9.10

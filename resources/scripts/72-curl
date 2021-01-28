@@ -1,8 +1,0 @@
-#!/bin/bash
-tar xf curl-7.68.0.tar.xz
-cd curl-7.68.0
-./configure --prefix=$1/usr --disable-static --enable-threaded-resolver --with-ca-path=$1/etc/ssl/certs --host=$4
-make -j$2
-make install
-cd ..
-rm -rf curl-7.68.0
