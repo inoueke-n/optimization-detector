@@ -12,6 +12,7 @@ RUN apt-get -y install   \
     meson=0.49.2-1       \
     ninja-build=1.8.2-1
 RUN pip3 install tqdm==4.53.0
+RUN pip3 install python-magic==0.4.18
 COPY resources /build/resources
 COPY generate_dataset.py /build
 WORKDIR /build

@@ -1,5 +1,8 @@
 import argparse
+import fnmatch
 import hashlib
+import itertools
+import lzma
 import multiprocessing
 import os
 import shutil
@@ -7,11 +10,13 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import time
 import urllib.error
 import urllib.request
 from argparse import Namespace
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
+import magic
 from tqdm import tqdm
 
 
@@ -83,6 +88,11 @@ def getopt() -> Namespace:
                              "be passed to each compilation. Should contain "
                              "only the numbers 0,1,2,3 or s separated by :",
                         default="0:1:2:3:s")
+    parser.add_argument("-l", "--logdir", type=str,
+                        help="Directory that will contain the building logs "
+                             "for each binary. These will be packed in a "
+                             "single archive. By default, no logs will be "
+                             "saved", default=None)
     return parser.parse_args()
 
 
@@ -311,6 +321,28 @@ def prepare_folder(args: Namespace) -> Namespace:
         println_warn(msg)
     return args
 
+
+def clean_dir(prefix: str):
+    for entry in os.listdir(prefix):
+        if entry != "sources":
+            shutil.rmtree(entry)
+
+
+def build_all(args: Namespace):
+    """
+    Runs the various bash scripts that will build the dataset
+    """
+    for triplet in args.targets:
+        for opt in args.flags:
+            clean_dir(args.build_dir)
+            build_single(args.build_dir, triplet, opt, args.jobs)
+            strip(args.build_dir, triplet + "-strip")
+            name = triplet.split("-")[0] + "-gcc-o" + opt
+            pack_binaries(args.build_dir, name, args.output)
+            if not args.logdir is not None:
+                pack_logs(args.build_dir, name, args.output)
+
+
 def set_build_tools(triplet: str) -> Dict:
     env = os.environ.copy()
     env["CC"] = triplet + "-gcc"
@@ -326,48 +358,119 @@ def set_build_tools(triplet: str) -> Dict:
     env["READELF"] = triplet + "-readelf"
     return env
 
-def build(args: Namespace):
-    """
-    Runs the various bash scripts that will build the dataset
-    """
-    src_dir = os.path.join(args.build_dir, "sources")
-    for triplet in args.targets:
-        # this is useless, but configure puts a warning if not found.
-        # and warnings are reported as errors by this script.
-        mt = os.path.join(args.build_dir, triplet + "-mt")
-        os.symlink("/bin/true", mt)
-        for opt in args.flags:
-            err = []
-            myenv = set_build_tools(triplet)
-            myenv["CFLAGS"] = " -O" + opt
-            myenv["PKG_CONFIG_PATH"] = os.path.join(args.build_dir, "/usr/lib/pkgconfig")
-            myenv["CXXFLAGS"] = myenv["CFLAGS"]
-            myenv["PATH"] = myenv["PATH"] + ":" + args.build_dir  # for mt
-            print(f"Building {Color.BOLD}{triplet}{Color.END} with "
-                  f"optimization {Color.BOLD}-O{opt}{Color.END}...")
-            script_list = sorted(os.listdir("resources/scripts"))
-            for script in tqdm(script_list, file=sys.stdout, ncols=60):
-                script_abs = os.path.abspath(
-                    os.path.join("resources/scripts", script))
-                outfile = os.path.join(args.build_dir, "logs")
-                errfile = os.path.join(outfile, script + ".stderr.log")
-                outfile = os.path.join(outfile, script + ".stdout.log")
-                script_args = ["bash", script_abs, args.build_dir,
-                               str(args.jobs), opt, triplet]
-                outfile = open(outfile, "w")
-                errfile = open(errfile, "w")
-                process = subprocess.Popen(script_args, env=myenv, cwd=src_dir,
-                                           stdout=outfile, stderr=errfile)
-                process.wait()
-                outfile.close()
-                errlen = errfile.tell()
-                errfile.close()
-                if script == "40-openssl":
-                    err.append(script)
-            if len(err):
-                println_warn(
-                    f"The following scripts did not run successfully: {err}")
-        os.remove(mt)
+
+def create_toolchain_cmake(prefix: str, triplet: str):
+    filename = os.path.join(prefix, "toolchain.cmake")
+    with open(filename, "w") as fp:
+        fp.write("set(CMAKE_SYSTEM_NAME Linux)\n")
+        fp.write(f"set(CMAKE_SYSTEM_PROCESSOR {triplet.split('-')[0]})\n")
+        fp.write(f"set(CMAKE_SYSROOT {prefix})\n")
+        fp.write(f"set(CMAKE_STAGING_PREFIX {prefix})\n")
+        fp.write(f"set(CMAKE_C_COMPILER {triplet}-gcc)\n")
+        fp.write(f"set(CMAKE_CXX_COMPILER {triplet}-g++)\n")
+        fp.write("set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)\n")
+        fp.write("set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)\n")
+        fp.write("set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)\n")
+        fp.write("set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)\n")
+
+
+def build_single(prefix: str, triplet: str, opt: str, jobs: int):
+    src_dir = os.path.join(prefix, "sources")
+    myenv = set_build_tools(triplet)
+    create_toolchain_cmake(prefix, triplet)
+    myenv["CFLAGS"] = " -O" + opt
+    myenv["PKG_CONFIG_PATH"] = os.path.join(prefix, "/usr/lib/pkgconfig")
+    myenv["CXXFLAGS"] = myenv["CFLAGS"]
+    print(f"Building {Color.BOLD}{triplet}{Color.END} with "
+          f"optimization {Color.BOLD}-O{opt}{Color.END}...")
+    script_list = sorted(os.listdir("resources/scripts"))
+    for script in tqdm(script_list, file=sys.stdout, ncols=60):
+        script_abs = os.path.abspath(
+            os.path.join("resources/scripts", script))
+        outfile = os.path.join(prefix, "logs")
+        outfile = os.path.join(outfile, script + ".stdout.log")
+        script_args = ["bash", script_abs, prefix, str(jobs), opt, triplet]
+        outfile = open(outfile, "w")
+        process = subprocess.Popen(script_args, env=myenv, cwd=src_dir,
+                                   stdout=outfile, stderr=subprocess.STDOUT)
+        process.wait()
+        outfile.close()
+
+
+def get_bin_and_libs(prefix: str) -> Tuple[List[str], List[str]]:
+    lib = os.path.join(prefix, "lib")
+    usrlib = os.path.join(prefix, "usr/lib")
+    bin = os.path.join(prefix, "bin")
+    sbin = os.path.join(prefix, "sbin")
+    usrbin = os.path.join(prefix, "usr/bin")
+    usrsbin = os.path.join(prefix, "usr/sbin")
+    usrlibex = os.path.join(prefix, "usr/libexec")
+    lib_iter = itertools.chain(os.walk(lib), os.walk(usrlib))
+    bin_iter = itertools.chain(os.walk(bin), os.walk(sbin), os.walk(usrbin),
+                               os.walk(usrsbin), os.walk(usrlibex))
+    bins = []
+    libs = []
+    for path, _, files in bin_iter:
+        for filename in files:
+            fullpath = os.path.join(path, filename)
+            if not os.path.islink(fullpath):
+                bins.append(fullpath)
+    for path, _, files in lib_iter:
+        for filename in files:
+            fullpath = os.path.join(path, filename)
+            if not os.path.islink(fullpath):
+                libs.append(os.path.join(path, filename))
+    return (bins, libs)
+
+
+def strip(prefix: str, strip: str):
+    (bins, libs) = get_bin_and_libs(prefix)
+    for lib in libs:
+        if lib.endswith(".a"):
+            subprocess.Popen([strip, "--strip-debug", lib],
+                             stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL)
+        if fnmatch.fnmatch(lib, "*.so*"):
+            subprocess.Popen([strip, "--strip-unneeded", lib],
+                             stdout=subprocess.DEVNULL,
+                             stderr=subprocess.DEVNULL)
+    for bin in bins:
+        subprocess.Popen([strip, "--strip-all", bin],
+                         stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL)
+
+
+def pack_binaries(prefix: str, name: str, output: str):
+    (bins, libs) = get_bin_and_libs(prefix)
+    files = []
+    for bin in itertools.chain(bins, libs):
+        desc = magic.from_file(bin)
+        if desc.startswith("ELF"):
+            files.append(bin)
+    target_folder = os.path.join(prefix, name)
+    target_tar = os.path.join(output, name + ".tar.xz")
+    if os.path.exists(target_tar):
+        target_tar = target_tar + str(time.time())
+        println_warn(f"Output file already existing. "
+                     f"The current output is thus {target_tar}")
+    os.mkdir(target_folder)
+    for file in files:
+        shutil.copy(file, target_folder, follow_symlinks=False)
+    with tarfile.open(target_tar, "w:xz",
+                      preset=9 | lzma.PRESET_EXTREME) as tar:
+        tar.add(target_folder, arcname=name)
+    shutil.rmtree(target_folder)
+
+
+def pack_logs(prefix: str, name: str, output: str):
+    target_tar = os.path.join(output, name + "-logs.tar.xz")
+    if os.path.exists(target_tar):
+        target_tar = target_tar + str(time.time())
+        println_warn(f"Output file already existing. "
+                     f"The current output is thus {target_tar}")
+    with tarfile.open(target_tar, "w:xz",
+                      preset=9 | lzma.PRESET_EXTREME) as tar:
+        tar.add(os.path.join(prefix, "logs"), arcname=name + "-logs")
 
 
 if __name__ == "__main__":
@@ -375,5 +478,5 @@ if __name__ == "__main__":
     args = check_flags(args)
     check_host_system()
     args = prepare_folder(args)
-    build(args)
-    # shutil.rmtree(args.build_dir)
+    build_all(args)
+    shutil.rmtree(args.build_dir)
