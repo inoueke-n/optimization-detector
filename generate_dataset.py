@@ -64,6 +64,9 @@ def println_info(text: str):
 
 
 def getopt() -> Namespace:
+    """
+    Parses the command line arguments
+    """
     parser = argparse.ArgumentParser(
         description="Generates a dataset with the given "
                     "architecture/compiler, optimization level, and output "
@@ -96,10 +99,30 @@ def getopt() -> Namespace:
     return parser.parse_args()
 
 
-def err_msg_not_in_path(x: str):
-    println_err()
-    print(f'{Color.BOLD}{x}{Color.END} is not in PATH')
-    exit(1)
+def check_and_create_dir(dirpath: str, info: List[str], name: str):
+    """
+    Checks if a directory exists and is writable. Creates it if it does not 
+    exist.
+    :param dirpath: directory path 
+    :param info: list of info messages
+    :param name: informal name of the folder (like output for output folder or 
+    log for log folder)
+    """
+    if not os.path.exists(dirpath):
+        try:
+            os.makedirs(dirpath)
+            info.append(f"Created {name} directory")
+        except IOError as err:
+            println_err()
+            print(f"Could not create directory {dirpath}:")
+            print(err)
+            exit(1)
+    elif not os.path.isdir(dirpath) or not os.access(dirpath, os.W_OK):
+        println_err()
+        print(
+            f"{name.capitalize()} directory {dirpath} already exists and is not "
+            f"writable")
+        exit(1)
 
 
 def check_flags(args: Namespace) -> Namespace:
@@ -107,7 +130,7 @@ def check_flags(args: Namespace) -> Namespace:
     Asserts that the parameters passed to the script are consistent and
     respects the specification. Moreover checks that the compilers exists
     and creates the output folder if not existing.
-    :param args arguments received from ArgumentParser
+    :param args arguments received from getopt()
     """
 
     info = []
@@ -116,27 +139,6 @@ def check_flags(args: Namespace) -> Namespace:
     print(f"Building for the following targets: {triplets}")
     print(f"Building following flags: {flags}")
     print("Checking args... ", end="", flush=True)
-    toolchain_expected = {"ar", "as", "ld", "nm", "objcopy", "objdump",
-                          "ranlib", "readelf", "strip"}
-    for triplet in triplets:
-        # asserts existence of the toolchain tools
-        for tool in toolchain_expected:
-            path = os.path.join("/usr", triplet)
-            path = os.path.join(path, "bin")
-            path = os.path.join(path, tool)
-            if not os.path.exists(path):
-                println_err()
-                print(f"Missing tool {path}")
-                exit(1)
-        cc = shutil.which(cmd=triplet + "-gcc", mode=os.X_OK)
-        cxx = shutil.which(cmd=triplet + "-g++", mode=os.X_OK)
-        pkg_config = shutil.which(cmd=triplet + "-pkg-config", mode=os.X_OK)
-        if cc is None:
-            err_msg_not_in_path(triplet + "-gcc")
-        if cxx is None:
-            err_msg_not_in_path(triplet + "-g++")
-        if pkg_config is None:
-            err_msg_not_in_path(triplet + "-pkg-config")
     allowed_flags = {"0", "1", "2", "3", "s"}
     for flag in flags:
         if flag not in allowed_flags:
@@ -146,20 +148,8 @@ def check_flags(args: Namespace) -> Namespace:
         flags = list(allowed_flags)
         info.append("Optimization flags have been set to default values. ("
                     "None were passed)")
-    if not os.path.exists(args.output):
-        try:
-            os.makedirs(args.output)
-            info.append("Created output directory")
-        except IOError as err:
-            println_err()
-            print(f"Could not create directory {args.output}:")
-            print(err)
-            exit(1)
-    elif not os.path.isdir(args.output) or not os.access(args.output, os.W_OK):
-        println_err()
-        print(f"Output directory {args.output} already exists and is not "
-              f"writable")
-        exit(1)
+    check_and_create_dir(args.output, info, "output")
+    check_and_create_dir(args.logdir, info, "logs")
     println_ok()
     for msg in info:
         println_info(msg)
@@ -183,13 +173,27 @@ def which(exe_list: List[str], wrong_exe: List[str]):
                 wrong_exe.append(exe)
 
 
-def check_host_system():
+def missing_toolchain(triplet: str) -> bool:
+    """
+    Checks whether gcc, g++ and binutils are installed and in the path for the
+    current triplet
+    :param triplet: a triplet in the form riscv64-linux-gnu
+    :return: True if some part of the toolchain is missing, False otherwise
+    """
+    toolchain_expected = {"ar", "as", "gcc", "g++", "ld", "ranlib", "strip"}
+    retval = False
+    for tool in toolchain_expected:
+        retval |= shutil.which(cmd=triplet + "-" + tool, mode=os.X_OK) is None
+    return retval
+
+
+def check_host_system(args: Namespace):
     """
     Checks the presence of some programs required by the current script
     """
     print("Checking host system... ", end="", flush=True)
     set = {("bash", "bash"),
-           ("autoreconf","autoconf"),
+           ("autoreconf", "autoconf"),
            ("automake", "automake"),
            ("bison", "bison"),
            ("bzip2", "bzip2"),
@@ -224,6 +228,37 @@ def check_host_system():
         exit(1)
     else:
         println_ok()
+    print("Checking compilers... ", end="", flush=True)
+    missing = list(filter(missing_toolchain, args.targets))
+    uid = os.getuid()
+    warn = ""
+    if len(missing) != 0:
+        if uid == 0:  # user is root
+            for miss in missing:  # install the missing toolchains
+                args = ["apt-get", "install", "-y", "binutils-" + miss,
+                        "gcc-" + miss, "g++-" + miss]
+                proc = subprocess.Popen(args, stdout=subprocess.DEVNULL,
+                                        stderr=subprocess.DEVNULL)
+                proc.wait()
+                if proc.returncode == 0:
+                    warn += f"{Color.BOLD}{miss}{Color.END} "
+                else:
+                    println_err()
+                    msg = f"Could not install toolchain " \
+                          f"{Color.BOLD}{miss}{Color.END}"
+                    print(msg)
+                    exit(1)
+        else:
+            println_err()
+            msg = ""
+            for miss in missing:
+                msg += Color.BOLD + miss + Color.END + ", "
+            msg = msg[:-2] + " toolchain(s) missing"
+            print(msg)
+            exit(1)
+    println_ok()
+    if warn != "":
+        println_info(f"Installed the following toolchain(s): {warn}.")
 
 
 def check_hash(folder: str, md5s: Dict, warn: set):
@@ -310,7 +345,6 @@ def prepare_folder(args: Namespace) -> Namespace:
                 os.remove(os.path.join("resources/sources", file))
         println_ok()
     args.build_dir = tempfile.mkdtemp()
-    os.makedirs(os.path.join(args.build_dir, "logs"))
     print("Decompressing... ", end="", flush=True)
     with tarfile.open("resources/sources.tar", "r") as tar:
         tar.extractall(args.build_dir)
@@ -323,9 +357,16 @@ def prepare_folder(args: Namespace) -> Namespace:
 
 
 def clean_dir(prefix: str):
+    """
+    Removes all the files inside the prefix directory, except sources
+    """
     for entry in os.listdir(prefix):
         if entry != "sources":
-            shutil.rmtree(entry)
+            filepath = os.path.join(prefix, entry)
+            if os.path.isdir(filepath):
+                shutil.rmtree(os.path.join(prefix, entry))
+            else:
+                os.remove(filepath)
 
 
 def build_all(args: Namespace):
@@ -335,15 +376,21 @@ def build_all(args: Namespace):
     for triplet in args.targets:
         for opt in args.flags:
             clean_dir(args.build_dir)
+            os.makedirs(os.path.join(args.build_dir, "logs"))
             build_single(args.build_dir, triplet, opt, args.jobs)
             strip(args.build_dir, triplet + "-strip")
             name = triplet.split("-")[0] + "-gcc-o" + opt
             pack_binaries(args.build_dir, name, args.output)
-            if not args.logdir is not None:
-                pack_logs(args.build_dir, name, args.output)
+            if args.logdir is not None:
+                pack_logs(args.build_dir, name, args.logdir)
 
 
 def set_build_tools(triplet: str) -> Dict:
+    """
+    Sets the environment for compilation. This will actually set
+    TOOL=triplet+tool where tool can be gcc, g++, etc...
+    Return a dictionary corresponding to the environment
+    """
     env = os.environ.copy()
     env["CC"] = triplet + "-gcc"
     env["CXX"] = triplet + "-g++"
@@ -359,13 +406,18 @@ def set_build_tools(triplet: str) -> Dict:
     return env
 
 
-def create_toolchain_cmake(prefix: str, triplet: str):
-    filename = os.path.join(prefix, "toolchain.cmake")
+def create_toolchain_cmake(sysroot: str, triplet: str):
+    """
+    Creates the toolchain.cmake file used by cmake scripts to cross-compile
+    :param sysroot: the sysroot of the toolchain
+    :param triplet: a triplet in the form riscv64-linux-gnu
+    """
+    filename = os.path.join(sysroot, "toolchain.cmake")
     with open(filename, "w") as fp:
         fp.write("set(CMAKE_SYSTEM_NAME Linux)\n")
         fp.write(f"set(CMAKE_SYSTEM_PROCESSOR {triplet.split('-')[0]})\n")
-        fp.write(f"set(CMAKE_SYSROOT {prefix})\n")
-        fp.write(f"set(CMAKE_STAGING_PREFIX {prefix})\n")
+        fp.write(f"set(CMAKE_SYSROOT {sysroot})\n")
+        fp.write(f"set(CMAKE_STAGING_PREFIX {sysroot})\n")
         fp.write(f"set(CMAKE_C_COMPILER {triplet}-gcc)\n")
         fp.write(f"set(CMAKE_CXX_COMPILER {triplet}-g++)\n")
         fp.write("set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)\n")
@@ -375,16 +427,27 @@ def create_toolchain_cmake(prefix: str, triplet: str):
 
 
 def build_single(prefix: str, triplet: str, opt: str, jobs: int):
+    """
+    Builds all the software for a single architecture/triplet and optimization
+    level.
+    :param prefix: folder where the files will be placed
+    :param triplet: a triplet in the form riscv64-linux-gnu
+    :param opt: optimization level: 0, 1, 2, 3 or s
+    :param jobs: number of maximum concurrent jobs
+    """
     src_dir = os.path.join(prefix, "sources")
     myenv = set_build_tools(triplet)
     create_toolchain_cmake(prefix, triplet)
-    myenv["CFLAGS"] = " -O" + opt
+    myenv["CFLAGS"] = " -pipe -O" + opt
     myenv["PKG_CONFIG_PATH"] = os.path.join(prefix, "/usr/lib/pkgconfig")
     myenv["CXXFLAGS"] = myenv["CFLAGS"]
     print(f"Building {Color.BOLD}{triplet}{Color.END} with "
           f"optimization {Color.BOLD}-O{opt}{Color.END}...")
     script_list = sorted(os.listdir("resources/scripts"))
-    for script in tqdm(script_list, file=sys.stdout, ncols=60):
+    pbar = tqdm(script_list, file=sys.stdout, ncols=79)
+    pbar.set_description("Building")
+    for script in pbar:
+        pbar.set_postfix_str(f"{Color.BOLD}{script.split('-')[1]}{Color.END}")
         script_abs = os.path.abspath(
             os.path.join("resources/scripts", script))
         outfile = os.path.join(prefix, "logs")
@@ -398,6 +461,12 @@ def build_single(prefix: str, triplet: str, opt: str, jobs: int):
 
 
 def get_bin_and_libs(prefix: str) -> Tuple[List[str], List[str]]:
+    """
+    Returns the list of binaries and libraries in a given folder (recursively).
+    :param prefix: The folder that will be scanned
+    :return: A tuple containing the list of binaries and list of libraries
+             respectively
+    """
     lib = os.path.join(prefix, "lib")
     usrlib = os.path.join(prefix, "usr/lib")
     bin = os.path.join(prefix, "bin")
@@ -420,10 +489,15 @@ def get_bin_and_libs(prefix: str) -> Tuple[List[str], List[str]]:
             fullpath = os.path.join(path, filename)
             if not os.path.islink(fullpath):
                 libs.append(os.path.join(path, filename))
-    return (bins, libs)
+    return bins, libs
 
 
 def strip(prefix: str, strip: str):
+    """
+    Strips the files generated by the build_single function.
+    :param prefix: the same folder passed to build_single
+    :param strip: the strip program for the correct architecture
+    """
     (bins, libs) = get_bin_and_libs(prefix)
     for lib in libs:
         if lib.endswith(".a"):
@@ -441,6 +515,13 @@ def strip(prefix: str, strip: str):
 
 
 def pack_binaries(prefix: str, name: str, output: str):
+    """
+    Packs all binaries generated by the build_single function into a single
+    .tar.xz with e9 compression level
+    :param prefix: the same folder passed to the build_single function
+    :param name: name of the output tar.xz (without extension)
+    :param output: the folder where the tarball will be created
+    """
     (bins, libs) = get_bin_and_libs(prefix)
     files = []
     for bin in itertools.chain(bins, libs):
@@ -463,6 +544,13 @@ def pack_binaries(prefix: str, name: str, output: str):
 
 
 def pack_logs(prefix: str, name: str, output: str):
+    """
+    Packs all logs generated by the build_single function into a single .tar.xz
+    with e9 compression level
+    :param prefix: the same folder passed to the build_single function
+    :param name: name of the output tar.xz (without extension)
+    :param output: the folder where the tarball will be created
+    """
     target_tar = os.path.join(output, name + "-logs.tar.xz")
     if os.path.exists(target_tar):
         target_tar = target_tar + str(time.time())
@@ -476,7 +564,7 @@ def pack_logs(prefix: str, name: str, output: str):
 if __name__ == "__main__":
     args = getopt()
     args = check_flags(args)
-    check_host_system()
+    check_host_system(args)
     args = prepare_folder(args)
     build_all(args)
     shutil.rmtree(args.build_dir)
