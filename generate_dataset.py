@@ -149,7 +149,8 @@ def check_flags(args: Namespace) -> Namespace:
         info.append("Optimization flags have been set to default values. ("
                     "None were passed)")
     check_and_create_dir(args.output, info, "output")
-    check_and_create_dir(args.logdir, info, "logs")
+    if args.logdir is not None:
+        check_and_create_dir(args.logdir, info, "logs")
     println_ok()
     for msg in info:
         println_info(msg)
@@ -198,25 +199,28 @@ def check_host_system(args: Namespace):
            ("bison", "bison"),
            ("bzip2", "bzip2"),
            ("chown", "coreutils"),
+           ("cmake", "cmake"),
            ("diff", "diffutils"),
+           ("file", "file"),
            ("find", "findutils"),
+           ("flex", "flex"),
            ("gcc", "gcc"),
            ("g++", "g++"),
            ("gawk", "gawk"),
            ("grep", "grep"),
            ("gzip", "gzip"),
+           ("libtoolize", "libtool"),
            ("m4", "m4"),
            ("make", "make"),
+           ("meson", "meson"),
+           ("ninja", "ninja-build"),
            ("patch", "patch"),
            ("perl", "perl"),
-           ("python3", "python"),
+           ("python3", "python3"),
            ("sed", "sed"),
            ("tar", "tar"),
            ("makeinfo", "texinfo"),
-           ("xz", "xz"),
-           ("cmake", "cmake"),
-           ("meson", "meson"),
-           ("ninja", "ninja-build")
+           ("xz", "xz")
            }
     missing = []
     for program in set:
@@ -389,7 +393,8 @@ def set_build_tools(triplet: str) -> Dict:
     """
     Sets the environment for compilation. This will actually set
     TOOL=triplet+tool where tool can be gcc, g++, etc...
-    Return a dictionary corresponding to the environment
+    :param triplet: a triplet in the form "riscv64-linux-gnu"
+    :return a dictionary corresponding to the environment
     """
     env = os.environ.copy()
     env["CC"] = triplet + "-gcc"
@@ -397,12 +402,8 @@ def set_build_tools(triplet: str) -> Dict:
     env["LD"] = triplet + "-ld"
     env["AR"] = triplet + "-ar"
     env["AS"] = triplet + "-as"
-    env["NM"] = triplet + "-nm"
     env["STRIP"] = triplet + "-strip"
     env["RANLIB"] = triplet + "-ranlib"
-    env["OBJDUMP"] = triplet + "-objdump"
-    env["OBJCOPY"] = triplet + "-objcopy"
-    env["READELF"] = triplet + "-readelf"
     return env
 
 
@@ -439,7 +440,7 @@ def build_single(prefix: str, triplet: str, opt: str, jobs: int):
     myenv = set_build_tools(triplet)
     create_toolchain_cmake(prefix, triplet)
     myenv["CFLAGS"] = " -pipe -O" + opt
-    myenv["PKG_CONFIG_PATH"] = os.path.join(prefix, "/usr/lib/pkgconfig")
+    myenv["PKG_CONFIG_PATH"] = os.path.join(prefix, "usr/lib/pkgconfig")
     myenv["CXXFLAGS"] = myenv["CFLAGS"]
     print(f"Building {Color.BOLD}{triplet}{Color.END} with "
           f"optimization {Color.BOLD}-O{opt}{Color.END}...")
@@ -525,9 +526,10 @@ def pack_binaries(prefix: str, name: str, output: str):
     (bins, libs) = get_bin_and_libs(prefix)
     files = []
     for bin in itertools.chain(bins, libs):
-        desc = magic.from_file(bin)
-        if desc.startswith("ELF"):
-            files.append(bin)
+        if os.path.exists(bin) and os.access(bin, os.R_OK):
+            desc = magic.from_file(bin)
+            if desc.startswith("ELF"):
+                files.append(bin)
     target_folder = os.path.join(prefix, name)
     target_tar = os.path.join(output, name + ".tar.xz")
     if os.path.exists(target_tar):

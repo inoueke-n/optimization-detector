@@ -1,6 +1,10 @@
 #!/bin/bash
 tar xf llvm-project-10.0.0.tar.xz
 cd llvm-project-10.0.0
+# Fix a problem with RISCV targets not linking -latomic (https://reviews.llvm.org/D69003)
+cat << EOF >> llvm/tools/dsymutil/CMakeLists.txt
+  target_link_libraries(dsymutil PRIVATE atomic)
+EOF
 mkdir -pv {tblgen,headers,build}
 cd tblgen
 CC=gcc CXX=g++ cmake -DLLVM_ENABLE_PROJECTS="clang" ../llvm
@@ -8,8 +12,9 @@ make -j$2 install-llvm-headers DESTDIR=../headers
 make llvm-tblgen clang-tblgen -j$2
 chmod -v +x bin/{llvm,clang}-tblgen
 cd ../build
-TOTALMEM_GB=$(cat /proc/meminfo | grep MemTotal | sed 's/[^0-9]*//g')
-LINK_PROCESSES=$(($TOTALMEM_GB/10000000))
+# Linking requires a HUGE amount of memory if not using ld.gold or ld.lld, so limit the available linking processes
+TOTALMEM_KB=$(cat /proc/meminfo | grep MemTotal | sed 's/[^0-9]*//g')
+LINK_PROCESSES=$(($TOTALMEM_KB/10000000))
 LINK_PROCESSES=$(($LINK_PROCESSES>0?$LINK_PROCESSES:1))
 CFLAGS="$CFLAGS -I$1/sources/llvm-project-10.0.0/headers/usr/local/include" cmake -DCMAKE_TOOLCHAIN_FILE=$1/toolchain.cmake -DCMAKE_BUILD_TYPE="Debug" -DLLVM_ENABLE_PROJECTS="libcxx;libcxxabi;clang;compiler-rt;lld;" -DCMAKE_INSTALL_PREFIX="$1/usr" -DLLVM_DEFAULT_TARGET_TRIPLE=riscv64-linux-gnu -DLLVM_TABLEGEN=../tblgen/bin/llvm-tblgen -DCLANG_TABLEGEN=../tblgen/bin/clang-tblgen -DCMAKE_VERBOSE_MAKEFILE=ON -DLLVM_PARALLEL_LINK_JOBS=$LINK_PROCESSES -G Ninja ../llvm/
 cmake --build .
