@@ -207,7 +207,9 @@ def check_host_system(args: Namespace):
            ("gcc", "gcc"),
            ("g++", "g++"),
            ("gawk", "gawk"),
+           ("gettext", "gettext"),
            ("grep", "grep"),
+           ("groff", "groff"),
            ("gzip", "gzip"),
            ("libtoolize", "libtool"),
            ("m4", "m4"),
@@ -538,7 +540,8 @@ def pack_binaries(prefix: str, name: str, output: str):
                      f"The current output is thus {target_tar}")
     os.mkdir(target_folder)
     for file in files:
-        shutil.copy(file, target_folder, follow_symlinks=False)
+        if os.path.exists(file) and os.access(file, os.R_OK):
+            shutil.copy(file, target_folder, follow_symlinks=False)
     with tarfile.open(target_tar, "w:xz",
                       preset=9 | lzma.PRESET_EXTREME) as tar:
         tar.add(target_folder, arcname=name)

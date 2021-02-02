@@ -1,7 +1,7 @@
 #!/bin/bash
 tar xf dbus-1.12.16.tar.gz 
 cd dbus-1.12.16
-CFLAGS="$CFLAGS --sysroot=$1" ./configure --prefix=$1/usr --sysconfdir=$1/etc --localstatedir=$1/var --disable-static --disable-doxygen-docs --disable-xml-docs --with-console-auth-dir=/run/console --host=$4
+CFLAGS="$CFLAGS -I$1/usr/include" LDFLAGS="$LDFLAGS -L$1/usr/lib" ./configure --prefix=$1/usr --sysconfdir=$1/etc --localstatedir=$1/var --disable-static --disable-doxygen-docs --disable-xml-docs --with-console-auth-dir=/run/console --host=$4
 make -j$2
 make install
 mv -v $1/usr/lib/libdbus-1.so.* $1/lib
@@ -9,5 +9,3 @@ ln -sfv ../../lib/$(readlink $1/usr/lib/libdbus-1.so) $1/usr/lib/libdbus-1.so
 ln -sfv $1/etc/machine-id $1/var/lib/dbus
 cd ..
 rm -rf dbus-1.12.16
-
-

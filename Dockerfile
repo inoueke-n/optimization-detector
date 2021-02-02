@@ -17,7 +17,9 @@ RUN apt-get -yq install            \
     libtool=2.4.6-14              \
     pkg-config=0.29.1-0ubuntu4    \
     gawk=1:5.0.1+dfsg-1           \
-    file=1:5.38-4
+    file=1:5.38-4                 \
+    gettext=0.19.8.1-10build1     \
+    groff=1.22.4-4build1
 
 RUN pip3 install tqdm==4.53.0
 RUN pip3 install python-magic==0.4.18

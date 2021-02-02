@@ -2,7 +2,7 @@
 tar xf man-db-2.9.0.tar.xz
 cd man-db-2.9.0
 #sed -i '/find/s@$1/usr@@' init/systemd/man-db.service.in
-CFLAGS="$CFLAGS -I$DIR/usr/include -L$DIR/usr/lib" ./configure --prefix=$1/usr --sysconfdir=$1/etc --disable-setuid --enable-cache-owner=bin --with-browser=$1/usr/bin/lynx --with-vgrind=$1/usr/bin/vgrind --with-grap=$1/usr/bin/grap --with-systemdtmpfilesdir=no --with-systemdsystemunitdir=no --host=$4 --disable-manual
+CFLAGS="$CFLAGS -I$1/usr/include -L$1/usr/lib" ./configure --prefix=$1/usr --sysconfdir=$1/etc --disable-setuid --enable-cache-owner=bin --with-browser=$1/usr/bin/lynx --with-vgrind=$1/usr/bin/vgrind --with-grap=$1/usr/bin/grap --with-systemdtmpfilesdir=no --with-systemdsystemunitdir=no --host=$4 --disable-manual
 make -j$2
 make install
 cd ..

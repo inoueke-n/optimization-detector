@@ -3,7 +3,7 @@ tar xf llvm-project-10.0.0.tar.xz
 cd llvm-project-10.0.0
 # Fix a problem with RISCV targets not linking -latomic (https://reviews.llvm.org/D69003)
 cat << EOF >> llvm/tools/dsymutil/CMakeLists.txt
-  target_link_libraries(dsymutil PRIVATE atomic)
+target_link_libraries(dsymutil PRIVATE atomic)
 EOF
 mkdir -pv {tblgen,headers,build}
 cd tblgen
@@ -16,7 +16,15 @@ cd ../build
 TOTALMEM_KB=$(cat /proc/meminfo | grep MemTotal | sed 's/[^0-9]*//g')
 LINK_PROCESSES=$(($TOTALMEM_KB/10000000))
 LINK_PROCESSES=$(($LINK_PROCESSES>0?$LINK_PROCESSES:1))
-CFLAGS="$CFLAGS -I$1/sources/llvm-project-10.0.0/headers/usr/local/include" cmake -DCMAKE_TOOLCHAIN_FILE=$1/toolchain.cmake -DCMAKE_BUILD_TYPE="Debug" -DLLVM_ENABLE_PROJECTS="libcxx;libcxxabi;clang;compiler-rt;lld;" -DCMAKE_INSTALL_PREFIX="$1/usr" -DLLVM_DEFAULT_TARGET_TRIPLE=riscv64-linux-gnu -DLLVM_TABLEGEN=../tblgen/bin/llvm-tblgen -DCLANG_TABLEGEN=../tblgen/bin/clang-tblgen -DCMAKE_VERBOSE_MAKEFILE=ON -DLLVM_PARALLEL_LINK_JOBS=$LINK_PROCESSES -G Ninja ../llvm/
+case $4 in
+    mips*) # unsupported compiler-rt on this architecture
+        TARGETS="libcxx;libcxxabi;clang;lld;";;
+    arm*) # bugs on llvm, arm can build libcxxabi only with clang
+        TARGETS="clang;compiler-rt;lld;";;
+    *) # powerpc, sparc64 and riscv64 can build everything
+        TARGETS="libcxx;libcxxabi;clang;compiler-rt;lld;";;
+esac
+CFLAGS="$CFLAGS -I$1/sources/llvm-project-10.0.0/headers/usr/local/include" cmake -DCMAKE_TOOLCHAIN_FILE=$1/toolchain.cmake -DCMAKE_BUILD_TYPE="Debug" -DLLVM_ENABLE_PROJECTS=$TARGETS -DCMAKE_INSTALL_PREFIX="$1/usr" -DLLVM_DEFAULT_TARGET_TRIPLE=riscv64-linux-gnu -DLLVM_TABLEGEN=../tblgen/bin/llvm-tblgen -DCLANG_TABLEGEN=../tblgen/bin/clang-tblgen -DCMAKE_VERBOSE_MAKEFILE=ON -DLLVM_PARALLEL_LINK_JOBS=$LINK_PROCESSES -G Ninja ../llvm/
 cmake --build .
 cmake --install .
 cd ../..
