@@ -41,12 +41,14 @@ def run_train(model_dir: str, seed: int, network: str) -> None:
     validate = BinaryDs(validate_bin)
     train.read()
     validate.read()
-    model_path = os.path.join(model_dir, MODEL_NAME)
+    model_network_dir = os.path.join(model_dir, network)
+    model_path = os.path.join(model_network_dir, MODEL_NAME)
     if os.path.exists(model_path):
         print("Loading previously created model")
         model = load_model(model_path)
     else:
         print(f"Creating new {network} model")
+        os.makedirs(model_network_dir, exist_ok=True)
         if network == "dense":
             model = model_dense(train.get_categories(), train.get_features())
         elif network == "lstm":

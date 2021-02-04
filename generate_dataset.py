@@ -541,7 +541,7 @@ def pack_binaries(prefix: str, name: str, output: str):
     os.mkdir(target_folder)
     for file in files:
         if os.path.exists(file) and os.access(file, os.R_OK):
-            shutil.copy(file, target_folder, follow_symlinks=False)
+            shutil.copy(file, target_folder)
     with tarfile.open(target_tar, "w:xz",
                       preset=9 | lzma.PRESET_EXTREME) as tar:
         tar.add(target_folder, arcname=name)

@@ -34,7 +34,8 @@ The manually generated dataset can be found at the
 [following link](https://zenodo.org/record/3865122#.X0XzttP7T_Q).
 Alternatively, one can follow the instructions on the 
 [dataset generation section](#generation) to generate a gcc-only dataset 
-automatically, for any architecture.
+automatically, for any architecture having `gcc`, `g++` and `binutils`
+available in the Ubuntu Packages repository.
 
 This software expects a list of binary files as dataset and can use two
  types of analysis: 
@@ -72,11 +73,13 @@ Given that compilation results may vary greatly based on the host environment,
 using `docker` to generate the dataset is mandatory.
 
 First create the image using:
+
 ```bash
 $ docker build -t <image_name> .
 ```
 
 Then execute the command on the newly created container:
+
 ```bash
 $ docker run -it <image_name> python3 generate_dataset.py -t "riscv64-linux-gnu" /build 
 ```
@@ -95,16 +98,22 @@ architecture-flag combination.
 
 As soon as the build is finished, one can use the following command to copy out
 the results.
-```
-$ docker cp /build/*.tar.xz <target_directory>
+
+```bash
+$ docker cp /build/riscv64-gcc-o0.tar.xz <target_directory>
 ```
 
+where `riscv64` and `o0` should be replaced accordingly with the input 
+architecture and optimization level.
+
 At this point, the dataset should be extracted with 
+
 ```bash
 $ tar xf <archive> -C <target>
 ```
+
 in order to be used by the next step (ironically called Dataset Extraction 
-aswell, even though is a different kind of extraction).
+as well, even though is a different kind of extraction).
 
 ### Extraction
 
@@ -131,9 +140,11 @@ where
  classes and training/validation/testing sets. 
  
 For preprocessing the following command should be used:
+
 ```bash
 $ python3 optimization-detector.py preprocess -c <class ID> <input_folder> <model_dir> 
 ```
+
 where 
 - `<input_folder>` is the folder containing the dataset (`.txt` or `.bin`).
 - `<class ID>` is an unique ID chosen by the user to represent the current
@@ -146,6 +157,7 @@ an extra flag `-F true` is required. This flag effectively filters the files
 
 Note that this command should be run multiple times, every time with a
  different class and the same model dir, for example like this:
+
  ```bash
 $ python3 optimization-detector.py preprocess -c 0 gcc-o0/ model_dir/
 $ python3 optimization-detector.py preprocess -c 1 gcc-o1/ model_dir/ 
@@ -153,7 +165,7 @@ $ python3 optimization-detector.py preprocess -c 2 gcc-o2/ model_dir/
 $ python3 optimization-detector.py preprocess -c 3 gcc-o3/ model_dir/  
  ```
 
-Finally the following command can be used to check the amount of samples that 
+Finally, the following command can be used to check the amount of samples that 
 will be used for training, validation and testing
 
 ```bash
@@ -162,6 +174,7 @@ $ python3 optimization-detector.py summary <model_dir>
 
 ### Training
 Training can be run with the following command after preprocessing:
+
 ```bash
 $ python3 optimization-detector.py train -n <network_type> <model_dir>
 ```
@@ -174,8 +187,9 @@ An extra folder, containing tensorboard data, `logs/` will be generated
 
 ### Evaluation
 The evaluation in the paper has been run with the following command:
+
 ```bash
-$ python3 optimization-detector.py evaluate <model_dir> -o output.csv
+$ python3 optimization-detector.py evaluate <model_dir>/<network_type> -o output.csv
 ```
 
 This will test the classification multiple times, each time increasing the
