@@ -18,9 +18,14 @@ LINK_PROCESSES=$(($TOTALMEM_KB/10000000))
 LINK_PROCESSES=$(($LINK_PROCESSES>0?$LINK_PROCESSES:1))
 case $4 in
     mips*) # unsupported compiler-rt on this architecture
-        TARGETS="libcxx;libcxxabi;clang;lld;";;
+      TARGETS="libcxx;libcxxabi;clang;lld;";;
     arm*) # bugs on llvm, arm can build libcxxabi only with clang
-        TARGETS="clang;compiler-rt;lld;";;
+      case $3 in
+        0) # with O0 there's an error about a register usage on compiler-rt
+          TARGETS="clang;lld;";;
+        *)
+          TARGETS="clang;compiler-rt;lld;";;
+      esac;;
     *) # powerpc, sparc64 and riscv64 can build everything
         TARGETS="libcxx;libcxxabi;clang;compiler-rt;lld;";;
 esac

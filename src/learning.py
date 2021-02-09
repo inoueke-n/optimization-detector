@@ -10,6 +10,7 @@ from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.callbacks import ModelCheckpoint, TensorBoard
 from tensorflow.keras.layers import Conv1D, MaxPooling1D, Embedding, LSTM
 from tensorflow.keras.layers import Dense, Flatten, Input, Dropout, LeakyReLU
+from tensorflow.keras.models import Model
 from tensorflow.keras.models import load_model
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.preprocessing import sequence
@@ -21,7 +22,7 @@ from src.binaryds import BinaryDs
 MODEL_NAME = "model.h5"
 
 
-def run_train(model_dir: str, seed: int, network: str) -> None:
+def run_train(model_dir: str, seed: int, network: str, bs: int) -> None:
     """
     Trains the model
     :param model_dir: string pointing to the folder containing the train.bin
@@ -29,6 +30,7 @@ def run_train(model_dir: str, seed: int, network: str) -> None:
     :param seed: seed that will be used for training
     :param network: either "dense", "lstm" or "cnn", to choose which
     function to train
+    :param bs: batch size. If None it will be automatically determined
     """
     if seed == 0:
         seed = int(time.time())
@@ -80,7 +82,7 @@ def run_train(model_dir: str, seed: int, network: str) -> None:
                                  verbose=1,
                                  save_best_only=True)
 
-    tensorboard_logs = os.path.join(model_dir, 'logs')
+    tensorboard_logs = os.path.join(model_network_dir, 'logs')
     os.makedirs(tensorboard_logs, exist_ok=True)
     tensorboad = TensorBoard(log_dir=tensorboard_logs,
                              histogram_freq=1,
@@ -92,8 +94,7 @@ def run_train(model_dir: str, seed: int, network: str) -> None:
                                   min_delta=0.001,
                                   patience=3,
                                   mode="auto")
-
-    model.fit(x_train, y_train, epochs=40, batch_size=256,
+    model.fit(x_train, y_train, epochs=40, batch_size=bs,
               validation_data=(x_val, y_val),
               callbacks=[tensorboad, checkpoint, early_stopper])
 
@@ -252,7 +253,7 @@ def model_cnn(classes: int, features: int) -> Sequential:
 
 
 def run_evaluation(model_dir: str, file: str, stop: int, incr: int,
-                   seed: int, fixed: int) -> None:
+                   seed: int, fixed: int, bs: int) -> None:
     """
     Run the evaluation on the test dataset and reports the confusion matrix.
     The evaluation will be normally run by evaluating inputs with only 1
@@ -269,6 +270,7 @@ def run_evaluation(model_dir: str, file: str, stop: int, incr: int,
     :param seed: seed that will be used for training
     :param fixed: if different from 0 only this specific number of features
     will be tested. If equals to 0, every feature from 1 to stop.
+    :param bs: batch_size
     """
     if seed == 0:
         seed = int(time.time())
@@ -288,13 +290,14 @@ def run_evaluation(model_dir: str, file: str, stop: int, incr: int,
     function = test.get_function_granularity()
     features = test.get_features()
     x, y = generate_sequences(test, fake_pad=False)
+    model = load_model(model_path)
     limit = stop
     if limit == 0:
         limit = test.get_features()
     while cut <= limit:
         print(f"Evaluating {cut}")
         nx, ny = cut_dataset(x, y, function, cut)
-        matrix = evaluate_nn(model_path, nx, ny, categories, features)
+        matrix = evaluate_nn(model, nx, ny, categories, features, bs)
         # binary, write confusion matrix
         matrix = np.asarray(matrix)
         if categories <= 2:
@@ -360,22 +363,23 @@ def cut_dataset(x: np.array, y: np.array, function: bool,
         return np.asarray(nx), y
 
 
-def evaluate_nn(model_path: str, x_test: np.array, y_test: np.array,
-                classes: int, features: int) -> Union[SparseTensor, SparseAdd]:
+def evaluate_nn(model: Model, x_test: np.array, y_test: np.array, classes: int,
+                features: int, bs: int) -> Union[
+    SparseTensor, SparseAdd]:
     """
     Actual inference.
-    :param model_path: string pointin to the model.h5 file
+    :param model: keras model
     :param x_test: input vectors
     :param y_test:  expected prediction
     :param classes: number of categories to predict
     :param features: number of features in input
+    :param bs: batch_size
     :return: The confusion matrix. Its shape depends if multiclass or single
     class.
     """
-    model = load_model(model_path)
     x_test = sequence.pad_sequences(x_test, maxlen=features, dtype="int32",
                                     padding="pre", truncating="pre", value=0)
-    yhat_classes = model.predict_classes(x_test, verbose=1, batch_size=256)
+    yhat_classes = model.predict_classes(x_test, verbose=1, batch_size=bs)
     if classes > 2:
         y_test = np.argmax(y_test, axis=1)
         matrix = confusion_matrix(y_test, yhat_classes, num_classes=classes)

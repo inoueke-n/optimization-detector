@@ -113,12 +113,14 @@ class FlagDetectionTrainer:
         parser.add_argument("-n", "--network",
                             default="cnn", choices=["dense", "lstm", "cnn"],
                             help="Choose which network to use for training.")
+        parser.add_argument("-b", "--batchsize",
+                            default=256, type=int)
         parser.add_argument("-s", "--seed", metavar="seed", default=0,
                             help="Seed used to initialize the weights during "
                                  "training.")
         parsed_args = parser.parse_args(args)
         run_train(parsed_args.model_dir, int(parsed_args.seed),
-                  parsed_args.network)
+                  parsed_args.network, parsed_args.batchsize)
 
     @staticmethod
     def tune(args):
@@ -170,6 +172,8 @@ class FlagDetectionTrainer:
                             help="Test for a single number of features.")
         parser.add_argument("-s", "--seed", metavar="seed", default="0",
                             help="Seed used to create the sequences.")
+        parser.add_argument("-b", "--batchsize",
+                            default=256, type=int)
         parser.add_argument("-i", "--increment", metavar="cut increment",
                             default="0",
                             help="Increment for each iteration of the "
@@ -177,7 +181,8 @@ class FlagDetectionTrainer:
         parsed_args = parser.parse_args(args)
         run_evaluation(parsed_args.model_dir, parsed_args.output,
                        int(parsed_args.cut), int(parsed_args.increment),
-                       int(parsed_args.seed), int(parsed_args.fixed))
+                       int(parsed_args.seed), int(parsed_args.fixed),
+                       parsed_args.batchsize)
 
     @staticmethod
     def summary(args):

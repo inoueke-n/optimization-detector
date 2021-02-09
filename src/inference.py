@@ -46,9 +46,8 @@ def inference_file(input_file: str, model: tf.keras.Model, batch_size: int,
     return result
 
 
-def run_inference(input_files: List[str], input_dir: str, model_path: str,
-                  function: bool, output: str, batch_size: int,
-                  features: int, threads: int):
+def run_inference(input_files: List[str], input_dir: str, model_path: str, output: str, bs: int,
+                  features: int):
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
     total_jobs = 0
     jobs = []
@@ -66,7 +65,7 @@ def run_inference(input_files: List[str], input_dir: str, model_path: str,
     model = load_model(model_path)
     progress = tqdm(total=total_jobs)
     for job in jobs:
-        result = inference_file(job, model, batch_size, features)
+        result = inference_file(job, model, bs, features)
         progress.update(1)
         results.append((job, result))
     progress.close()
