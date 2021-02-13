@@ -36,14 +36,14 @@ class TestBinaryDs(TestCase):
     def tearDownClass(self):
         shutil.rmtree(self.tmpdir)
 
-    def test_open_ro_not_existing(self):
-        file = os.path.join(self.tmpdir, "ro_not_existing.bin")
+    def test_open_readonly_not_existing(self):
+        file = os.path.join(self.tmpdir, "readonly_not_existing.bin")
         with self.assertRaises(PermissionError):
             BinaryDs(file, True).open()
 
-    # add some raw data with the wrong number of features. Assert error
-    def test_wrong_number_features(self):
-        file = os.path.join(self.tmpdir, "wrong_features.bin")
+    # write some raw data with the wrong number of features. Assert error
+    def test_write_wrong_number_features(self):
+        file = os.path.join(self.tmpdir, "write_wrong_features.bin")
         with BinaryDs(file) as dataset:
             with self.assertRaises(ValueError):
                 dataset.write(self.data_raw)
@@ -55,6 +55,30 @@ class TestBinaryDs(TestCase):
         dataset.close()
         with self.assertRaises(IOError):
             BinaryDs(file, raw_data=True).open()
+
+    # open existing file with the wrong encoding (readonly). should succeed
+    def test_wrong_encoding_readonly(self):
+        file = os.path.join(self.tmpdir, "wrongenc_readonly.bin")
+        dataset = BinaryDs(file, raw_data=False).open()
+        dataset.close()
+        with BinaryDs(file, raw_data=True, read_only=True) as dataset:
+            self.assertFalse(dataset.is_raw())
+
+    # open existing file with the wrong encoding
+    def test_open_wrong_features(self):
+        file = os.path.join(self.tmpdir, "open_wrong_features.bin")
+        dataset = BinaryDs(file, features=1024).open()
+        dataset.close()
+        with self.assertRaises(IOError):
+            BinaryDs(file, features=2048).open()
+
+    # open existing file with the wrong encoding (readonly). should succeed
+    def test_open_wrong_features_readonly(self):
+        file = os.path.join(self.tmpdir, "open_wrong_features_readonly.bin")
+        dataset = BinaryDs(file, features=1024).open()
+        dataset.close()
+        with BinaryDs(file, features=2048, read_only=True) as dataset:
+            self.assertEquals(dataset.get_features(), 1024)
 
     # Write a file. Then read it. Assert the content is ok
     def test_read_write(self):
@@ -215,14 +239,17 @@ class TestBinaryDs(TestCase):
 
     def test_deduplicate(self):
         file = os.path.join(self.tmpdir, "sort.bin")
-        expected = [self.data_raw[0]]+[self.data_raw2[-1]]+self.data_raw[1:]+self.data_raw2[:-1]
-        with  BinaryDs(file, features=14) as dataset:
+        expected = [self.data_raw[0]] + \
+                   [self.data_raw2[-1]] + \
+                   self.data_raw[1:] + \
+                   self.data_raw2[:-1]
+        with BinaryDs(file, features=14) as dataset:
             dataset.write([self.data_raw[0]])
             dataset.write(self.data_raw)
             dataset.write(self.data_raw2)
             dataset.write(self.data_raw)
             dataset.write(self.data_raw2)
-        with  BinaryDs(file, features=14) as dataset:
+        with BinaryDs(file, features=14) as dataset:
             dataset.deduplicate()
             data = dataset.read(0, 11)
             self.assertEqual(data, expected)

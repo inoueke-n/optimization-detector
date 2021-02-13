@@ -1,6 +1,6 @@
 import csv
 import os
-from concurrent.futures._base import as_completed
+from asyncio import as_completed
 from concurrent.futures.process import ProcessPoolExecutor
 from typing import List
 
@@ -43,7 +43,7 @@ invalid_opcodes_table = [False, False, False, False, False, False, True, True,
                          False, False, False, False, False, False]
 
 
-def run_extractor(input_files: List[str], outdir: str, function: bool,
+def run_extractor(input_files: List[str], outdir: str, openc: bool,
                   jobs: int) -> None:
     """
     Extracts the data from binary files, either as a list of function
@@ -52,8 +52,8 @@ def run_extractor(input_files: List[str], outdir: str, function: bool,
     binary file.
     :param outdir: The directory where the extracted data should be written.
     The same filename of the input_files will be used, with a .txt appended
-    in case of function analysis or .bin otherwise.
-    :param function: true if function analysis is requested. This particular
+    in case of opcode encoded analysis or .bin otherwise.
+    :param openc: true if opcode encoded analysis is requested. This particular
     type of analysis uses the output of disassembly instead of plain raw bytes.
     :param jobs: maximum number of jobs that will be spawned concurrently
     """
@@ -68,7 +68,7 @@ def run_extractor(input_files: List[str], outdir: str, function: bool,
     else:
         raise IOError(f"The folder {outdir} does not exist")
 
-    if function:
+    if openc:
         extension = ".csv"
         f = extract_function_to_file
     else:
@@ -150,7 +150,8 @@ def get_opcode(bytes: bytearray) -> bytearray:
     :param bytes: a bytearray containing the input statement
     :return: a bytearray containing the output opcode
     """
-    # TODO: add ARM support
+    # TODO: add ARM support. (x86 opcode encoding sucks, I won't study
+    #  in-depth the ARM specification when naive approach is better)
     prev_0f = False
     # 0xF2 or 0xF3 if previous value was one of those
     # used to address the sequence 0xF20FXX where 0FXX is the opcode

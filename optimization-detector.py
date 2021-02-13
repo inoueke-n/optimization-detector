@@ -6,7 +6,8 @@ import sys
 from src.extractor import run_extractor
 from src.inference import run_inference
 from src.learning import run_train, run_evaluation
-from src.preprocess import run_preprocess, run_summary
+from src.preprocess import run_preprocess
+from src.summary import run_summary
 
 
 class FlagDetectionTrainer:
@@ -43,11 +44,8 @@ class FlagDetectionTrainer:
         parser.add_argument("output_dir",
                             help="Folder that will be used for writing the "
                                  "extracted data.")
-        parser.add_argument("-F", "--function", required=False,
-                            choices=["true", "false"],
-                            default="False",
-                            help="Extracts data for function grained "
-                                 "analysis if this variable is true.")
+        parser.add_argument("-e", "--encoded", action="store_true",
+                            help="Assumes opcode encoded analysis if set.")
         parser.add_argument("-j", "--jobs", required=False,
                             default=multiprocessing.cpu_count(),
                             help="Specifies the number of concurrent jobs. "
@@ -55,8 +53,7 @@ class FlagDetectionTrainer:
                                  "system.")
         parsed_args = parser.parse_args(args)
         run_extractor(parsed_args.input, parsed_args.output_dir,
-                      bool(parsed_args.function == "true"),
-                      parsed_args.jobs)
+                      parsed_args.encoded, parsed_args.jobs)
 
     @staticmethod
     def preprocess(args):
@@ -73,32 +70,24 @@ class FlagDetectionTrainer:
                             help="Path to the folder that will contain the "
                                  "model. If an existing dataset is found, "
                                  "it will be merged with this one.")
-        parser.add_argument("-F", "--function", required=False,
-                            choices=["true", "false"],
-                            default="false",
-                            help="Enables the function grained analysis.")
+        parser.add_argument("-e", "--encoded", action="store_true",
+                            help="Assumes opcode encoded analysis if set.")
         parser.add_argument("-f", "--features", default=2048,
                             help="Number of features used in the evaluation, "
                                  "defaults to 2048.")
         parser.add_argument("-c", "--category", required=True, metavar="int",
                             help="A number representing the "
                                  "category label for this data.")
-        parser.add_argument("-s", "--split", default=0.5,
-                            help="The proportion between train, test and "
-                                 "validation. The first split is between "
-                                 "train and test+validation, the second "
-                                 "between test and validation, using the "
-                                 "same ratio.")
-        parser.add_argument("-b", "--balance", required=False, default="true",
-                            choices=["true", "false"],
+        parser.add_argument("-s", "--seed", default=None,
+                            help="Seed used for the shuffling process")
+        parser.add_argument("-b", "--balance", action="store_true",
                             help="Decides whether the amount of samples "
                                  "should be the same for every class or not.")
         parsed_args = parser.parse_args(args)
         run_preprocess(parsed_args.data_dir, int(parsed_args.category),
-                       parsed_args.model_dir, bool(parsed_args.function ==
-                                                   "true"),
-                       int(parsed_args.features), float(parsed_args.split),
-                       bool(parsed_args.balance == "true"))
+                       parsed_args.model_dir, parsed_args.encoded,
+                       int(parsed_args.features), parsed_args.balance,
+                       parsed_args.seed)
 
     @staticmethod
     def train(args):
@@ -219,10 +208,8 @@ class FlagDetectionTrainer:
         parser.add_argument("-f", "--features", default=2048,
                             help="Number of features used in the training, "
                                  "defaults to 2048.")
-        parser.add_argument("-F", "--function", required=False,
-                            choices=["true", "false"],
-                            default="false",
-                            help="Enables the function grained analysis.")
+        parser.add_argument("-e", "--encoded", action="store_true",
+                            help="Assumes opcode encoded analysis if set.")
         parser.add_argument("-t", "--threads", required=False,
                             default=multiprocessing.cpu_count(),
                             help="Specifies the number of concurrent jobs. "
@@ -232,7 +219,7 @@ class FlagDetectionTrainer:
         run_inference(parsed_args.input,
                       parsed_args.dir,
                       parsed_args.model,
-                      bool(parsed_args.function == "true"),
+                      parsed_args.encoded,
                       parsed_args.output,
                       int(parsed_args.batch),
                       int(parsed_args.features),

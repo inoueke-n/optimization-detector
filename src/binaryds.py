@@ -87,6 +87,7 @@ class BinaryDs:
     def __read_and_check_existing(self) -> None:
         # Reads the data from the existing dataset file
         # Checks for consistency with the expected encoding and feature size
+        # If the file is open for reading, just update features and encoding
         self.file.seek(0, os.SEEK_SET)
         if int.from_bytes(self.file.read(1), byteorder="little") != MAGIC:
             self.file.close()
@@ -97,13 +98,13 @@ class BinaryDs:
         features = int.from_bytes(self.file.read(2), byteorder="little")
         self.examples = int.from_bytes(self.file.read(4), byteorder="little")
         # consistency check
-        if self.raw != raw:
+        if not self.ro and self.raw != raw:
             self.file.close()
             self.file = None
             raise IOError("The existing file has a different encoding type")
         else:
             self.raw = raw
-        if self.features != features:
+        if not self.ro and self.features != features:
             self.file.close()
             self.file = None
             raise IOError("The existing file has a different number of "
