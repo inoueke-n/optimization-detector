@@ -18,27 +18,29 @@ class BinaryDs:
 
     File structure of the binary:
     1 bytes -> magic
-    1 bytes -> 0: data is opcode based, 1:data is raw based
+    1 bit -> 0: data is opcode based, 1:data is raw based
+    7 bit -> number of categories (max 127 ofc)
     2 bytes -> number of features for each example
     4 bytes -> number of examples
     All the examples in the form {label(1 byte)+data}
     """
 
     def __init__(self, path: str, read_only: bool = False,
-                 features: int = 2048, raw_data: bool = True) -> None:
+                 features: int = 2048, encoded: bool = True) -> None:
         """
         Constructor
 
         :param path: path to the binary dataset
         :param read_only: True if the dataset will be open in read only mode
         :param features: number of features that will be used for each example
-        :param raw_data: true if the contained data will be a raw dump, so not
+        :param encoded: true if the contained data will be a raw dump, so not
         an opcode based encoding.
         (This has no effect on the dataset itself, but it is used as a double
         check to avoid mixing data from dataset encoded in different ways)
         """
         self.magic: int = MAGIC
-        self.raw: bool = raw_data
+        self.encoded: bool = encoded
+        self.categories: int = 0
         self.path: str = path
         self.features: int = features
         self.examples: int = 0
@@ -57,7 +59,10 @@ class BinaryDs:
             else:
                 self.file = open(self.path, "wb+")
                 self.file.write(self.magic.to_bytes(1, byteorder="little"))
-                self.file.write(self.raw.to_bytes(1, byteorder="little"))
+                if self.encoded:
+                    self.file.write(b'\x80')
+                else:
+                    self.file.write(b'\x00')
                 self.file.write(self.features.to_bytes(2, byteorder="little"))
                 self.file.write(self.examples.to_bytes(4, byteorder="little"))
         elif self.ro and os.access(self.path, os.R_OK):
@@ -84,6 +89,34 @@ class BinaryDs:
     def __exit__(self, exc_type, exc_value, tb):
         self.close()
 
+    # determine the number of categories inside the dataset
+    # if the dataset contains an example for 0, and for 2, the categories will
+    # be 3 (even though 1 is missing)
+    def __calc_max_cat(self) -> int:
+        cats = 0
+        self.file.seek(HEADER_SIZE, os.SEEK_SET)
+        for i in range(self.examples):
+            data = self.file.read(self.features + 1)
+            cat = data[0]
+            if cat >= cats:
+                cats = cat + 1
+        return cats
+
+    # read the max cat value inside the binary on disk
+    def __read_max_cats(self):
+        self.file.seek(1, os.SEEK_SET)
+        data = int.from_bytes(self.file.read(1), byteorder="little")
+        self.encoded = (data & 0x80) > 0
+        self.categories = data & 0x7F
+
+    # writes the max cat value inside the binary on disk
+    def __write_max_cats(self):
+        cats = self.__calc_max_cat()
+        self.categories = cats
+        self.file.seek(1, os.SEEK_SET)
+        data = (int(self.encoded) << 7) | (cats & 0x7F)
+        self.file.write(data.to_bytes(1, byteorder="little"))
+
     def __read_and_check_existing(self) -> None:
         # Reads the data from the existing dataset file
         # Checks for consistency with the expected encoding and feature size
@@ -94,16 +127,17 @@ class BinaryDs:
             self.file = None
             raise IOError(f"File {self.path} was not created by this "
                           f"application.")
-        raw = int.from_bytes(self.file.read(1), byteorder="little")
+        encoded = (int.from_bytes(self.file.read(1),
+                                  byteorder="little") & 0x80) > 0
         features = int.from_bytes(self.file.read(2), byteorder="little")
         self.examples = int.from_bytes(self.file.read(4), byteorder="little")
         # consistency check
-        if not self.ro and self.raw != raw:
+        if not self.ro and self.encoded != encoded:
             self.file.close()
             self.file = None
             raise IOError("The existing file has a different encoding type")
         else:
-            self.raw = raw
+            self.__read_max_cats()
         if not self.ro and self.features != features:
             self.file.close()
             self.file = None
@@ -112,12 +146,22 @@ class BinaryDs:
         else:
             self.features = features
 
-    def is_raw(self) -> bool:
+    def is_encoded(self) -> bool:
         """
         Returns the type of encoding used on the file.
-        1 for Raw based, 0 for Opcode based
+        0 for Raw based, 1 for Opcode based
         """
-        return self.raw
+        return self.encoded
+
+    def get_categories(self) -> int:
+        """
+        Returns the number of categories used in the dataset.
+        This function considers the highest value for each examples: if the
+        dataset contains two examples, one with category 0 and one with
+        category 2, this function will return 3 despite the category 1 being
+        missing.
+        """
+        return self.categories
 
     def get_features(self) -> int:
         """
@@ -149,6 +193,7 @@ class BinaryDs:
         for val in data:
             self.file.write(val[0].to_bytes(1, byteorder="little"))
             self.file.write(val[1])
+        self.__write_max_cats()
 
     def read(self, index: int, amount: int = 1) -> List[(int, bytes)]:
         """
@@ -242,7 +287,7 @@ class BinaryDs:
         """
         Removes all the content from other and puts it into self
         """
-        if self.is_raw() != other.is_raw():
+        if self.is_encoded() != other.is_encoded():
             raise IOError("To merge two datasets they must have the same "
                           "encoding")
         if self.get_features() != other.get_features():
@@ -259,6 +304,7 @@ class BinaryDs:
         if remainder > 0:
             read = other.read(iterations, remainder)
             self.write(read)
+        self.__write_max_cats()
         # remove from other file and update elements amount
         other.truncate()
 
@@ -267,7 +313,7 @@ class BinaryDs:
         Removes part of self and put it to other.
         The variable ration is #examples_kept/#examples_given
         """
-        if self.is_raw() != other.is_raw():
+        if self.is_encoded() != other.is_encoded():
             raise IOError("To merge two datasets they must have the same "
                           "encoding")
         if self.get_features() != other.get_features():
@@ -282,11 +328,14 @@ class BinaryDs:
             read = self.read(self.examples - amount, amount)
             other.write(read)
             self.truncate(self.examples - amount)
+
         remainder = examples_no % amount
         if remainder > 0:
             read = self.read(self.examples - remainder, remainder)
             other.write(read)
             self.truncate(self.examples - remainder)
+        other.__write_max_cats()
+        self.__write_max_cats()
 
     def deduplicate(self) -> None:
         """
@@ -334,6 +383,7 @@ class BinaryDs:
                 self.file.write(data)
                 self.file.seek(4, os.SEEK_SET)
                 self.file.write(self.examples.to_bytes(4, byteorder="little"))
+        self.__write_max_cats()
 
     def __calculate_hashes_from_chunk(self, chunk_elements, chunk_index,
                                       hashes, remove):

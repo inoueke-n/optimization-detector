@@ -64,9 +64,9 @@ def __load_all_into_train(model_dir: str, features: int,
     path_train = os.path.join(model_dir, "train.bin")
     path_val = os.path.join(model_dir, "validate.bin")
     path_test = os.path.join(model_dir, "test.bin")
-    train = BinaryDs(path_train, features=features, raw_data=not openc).open()
-    test = BinaryDs(path_test, features=features, raw_data=not openc).open()
-    validate = BinaryDs(path_val, features=features, raw_data=not openc).open()
+    train = BinaryDs(path_train, features=features, encoded=not openc).open()
+    test = BinaryDs(path_test, features=features, encoded=not openc).open()
+    validate = BinaryDs(path_val, features=features, encoded=not openc).open()
     train.merge(test)
     train.merge(validate)
     print(colored("OK", "green", attrs=['bold']), flush=True)
@@ -88,7 +88,7 @@ def read_and_add(dataset: BinaryDs, files: List[str], category: int) -> None:
     for cur_file in tqdm(files, ncols=60):
         data = list()
         features = dataset.get_features()
-        openc = not dataset.is_raw()
+        openc = dataset.is_encoded()
         if openc:
             with open(cur_file, 'r') as f:
                 reader = csv.DictReader(f, delimiter=",", quotechar='"',

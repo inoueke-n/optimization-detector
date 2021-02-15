@@ -51,18 +51,18 @@ class TestBinaryDs(TestCase):
     # open existing file with the wrong encoding
     def test_wrong_encoding(self):
         file = os.path.join(self.tmpdir, "wrongenc.bin")
-        dataset = BinaryDs(file, raw_data=False).open()
+        dataset = BinaryDs(file, encoded=False).open()
         dataset.close()
         with self.assertRaises(IOError):
-            BinaryDs(file, raw_data=True).open()
+            BinaryDs(file, encoded=True).open()
 
     # open existing file with the wrong encoding (readonly). should succeed
     def test_wrong_encoding_readonly(self):
         file = os.path.join(self.tmpdir, "wrongenc_readonly.bin")
-        dataset = BinaryDs(file, raw_data=False).open()
+        dataset = BinaryDs(file, encoded=False).open()
         dataset.close()
-        with BinaryDs(file, raw_data=True, read_only=True) as dataset:
-            self.assertFalse(dataset.is_raw())
+        with BinaryDs(file, encoded=True, read_only=True) as dataset:
+            self.assertFalse(dataset.is_encoded())
 
     # open existing file with the wrong encoding
     def test_open_wrong_features(self):
@@ -141,10 +141,10 @@ class TestBinaryDs(TestCase):
     def test_get_encoding(self):
         file_raw = os.path.join(self.tmpdir, "encoding_raw.bin")
         file_op = os.path.join(self.tmpdir, "encoding_op.bin")
-        with BinaryDs(file_raw, raw_data=True) as dataset_raw:
-            self.assertTrue(dataset_raw.is_raw())
-        with BinaryDs(file_op, raw_data=False) as dataset_op:
-            self.assertFalse(dataset_op.is_raw())
+        with BinaryDs(file_raw, encoded=True) as dataset_raw:
+            self.assertTrue(dataset_raw.is_encoded())
+        with BinaryDs(file_op, encoded=False) as dataset_op:
+            self.assertFalse(dataset_op.is_encoded())
 
     # Asserts the correct number of features. file already open
     def test_get_features(self):
@@ -164,9 +164,9 @@ class TestBinaryDs(TestCase):
     def test_merge_different_encoding(self):
         file_op = os.path.join(self.tmpdir, "merge_op.bin")
         file_raw = os.path.join(self.tmpdir, "merge_raw.bin")
-        with BinaryDs(file_op, raw_data=False, features=14) as ds_op:
+        with BinaryDs(file_op, encoded=False, features=14) as ds_op:
             ds_op.write(self.data_raw)
-            with BinaryDs(file_raw, raw_data=True, features=14) as ds_raw:
+            with BinaryDs(file_raw, encoded=True, features=14) as ds_raw:
                 ds_raw.write(self.data_raw)
                 with self.assertRaises(IOError):
                     ds_raw.merge(ds_op)
@@ -238,7 +238,7 @@ class TestBinaryDs(TestCase):
         dataset2.close()
 
     def test_deduplicate(self):
-        file = os.path.join(self.tmpdir, "sort.bin")
+        file = os.path.join(self.tmpdir, "deduplicate.bin")
         expected = [self.data_raw[0]] + \
                    [self.data_raw2[-1]] + \
                    self.data_raw[1:] + \
@@ -253,3 +253,16 @@ class TestBinaryDs(TestCase):
             dataset.deduplicate()
             data = dataset.read(0, 11)
             self.assertEqual(data, expected)
+
+    def test_update_categories(self):
+        file = os.path.join(self.tmpdir, "categories.bin")
+        with BinaryDs(file, features=14) as dataset:
+            self.assertEqual(dataset.get_categories(), 0)
+            dataset.write(self.data_raw[:1])
+        with BinaryDs(file, features=14) as dataset:
+            self.assertEqual(dataset.get_categories(), 1)
+            dataset.write(self.data_raw[2:3])
+        with BinaryDs(file, features=14) as dataset:
+            self.assertEqual(dataset.get_categories(), 3)
+
+
