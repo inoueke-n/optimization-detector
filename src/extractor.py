@@ -1,6 +1,6 @@
 import csv
 import os
-from asyncio import as_completed
+from concurrent.futures import as_completed
 from concurrent.futures.process import ProcessPoolExecutor
 from typing import List
 
@@ -117,9 +117,14 @@ def extract_dot_text_to_file(file: str, out_file: str) -> None:
         if section["name"] == expected_name:
             address = section["vaddr"]
             length = section["size"]
-            r2.cmd("s " + str(address))
-            r2.cmd("pr " + str(length) + " > " + out_file)
-            break
+            max_block_size = int(r2.cmd('bm'), 0)
+            open(out_file, "w").close()  # truncate file if existing
+            while length > 0:
+                amount = min(length, max_block_size)
+                r2.cmd("s " + str(address))
+                r2.cmd("pr " + str(amount) + " >> " + out_file)
+                length -= amount
+                address += amount
     r2.quit()
 
 
