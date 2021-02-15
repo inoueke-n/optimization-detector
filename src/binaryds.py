@@ -323,7 +323,7 @@ class BinaryDs:
         examples_no = int(self.examples * ratio)
         features_size = self.features + 1
         amount = int(BLOCK_SIZE / features_size)
-        iterations = int(self.examples / amount)
+        iterations = int(examples_no / amount)
         for _ in range(iterations):
             read = self.read(self.examples - amount, amount)
             other.write(read)

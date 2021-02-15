@@ -13,12 +13,12 @@ from tensorflow.keras.layers import Dense, Flatten, Input, Dropout, LeakyReLU
 from tensorflow.keras.models import Model
 from tensorflow.keras.models import load_model
 from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.preprocessing import sequence
 from tensorflow.python import confusion_matrix, SparseAdd, SparseTensor
 
 from src.binaryds import BinaryDs
-
 # name of the model on the disk
+from src.datagenerator import DataGenerator
+
 MODEL_NAME = "model.h5"
 
 
@@ -39,10 +39,8 @@ def run_train(model_dir: str, seed: int, network: str, bs: int) -> None:
     validate_bin = os.path.join(model_dir, "validate.bin")
     assert os.path.exists(train_bin), "Train dataset does not exists!"
     assert os.path.exists(validate_bin), "Validation dataset does not exists!"
-    train = BinaryDs(train_bin)
-    validate = BinaryDs(validate_bin)
-    train.read()
-    validate.read()
+    train = BinaryDs(train_bin, read_only=True).open()
+    validate = BinaryDs(validate_bin, read_only=True).open()
     model_network_dir = os.path.join(model_dir, network)
     model_path = os.path.join(model_network_dir, MODEL_NAME)
     if os.path.exists(model_path):
@@ -62,26 +60,10 @@ def run_train(model_dir: str, seed: int, network: str, bs: int) -> None:
                              "not chosen between dense/lstm/cnn")
     print(model.summary())
     np.random.seed(seed)
-    if train.get_function_granularity():
-        # functions are already variable sized so no need to pad
-        fake_pad = False
-    else:
-        # pad the regularly sized chunks instead
-        fake_pad = True
-    x_train, y_train = generate_sequences(train, fake_pad)
-    x_val, y_val = generate_sequences(validate, fake_pad)
-    x_train = sequence.pad_sequences(x_train, maxlen=train.features,
-                                     padding="pre", truncating="pre",
-                                     value=0, dtype="int32")
-    x_val = sequence.pad_sequences(x_val, maxlen=validate.features,
-                                   padding="pre", truncating="pre",
-                                   value=0, dtype="int32")
-
     checkpoint = ModelCheckpoint(filepath=model_path,
                                  monitor="val_loss",
                                  verbose=1,
                                  save_best_only=True)
-
     tensorboard_logs = os.path.join(model_network_dir, 'logs')
     os.makedirs(tensorboard_logs, exist_ok=True)
     tensorboad = TensorBoard(log_dir=tensorboard_logs,
@@ -94,60 +76,14 @@ def run_train(model_dir: str, seed: int, network: str, bs: int) -> None:
                                   min_delta=0.001,
                                   patience=3,
                                   mode="auto")
-    model.fit(x_train, y_train, epochs=40, batch_size=bs,
-              validation_data=(x_val, y_val),
+    gen_train = DataGenerator(train, bs)
+    gen_val = DataGenerator(validate, bs)
+    model.fit(gen_train,
+              validation_data=gen_val,
+              epochs=40,
               callbacks=[tensorboad, checkpoint, early_stopper])
-
-
-def generate_sequences(data: BinaryDs, fake_pad: bool) -> (np.array, np.array):
-    """
-    Generates the pairs (X, y) that will be used during the training.
-    More specifically generates y and shuffle X.
-    If fake_pad is true, randomly removes data from X. This is useful in case
-    the training samples have always the same amount of features, but during
-    inference this number may change.
-    :param data: binary dataset containing the samples
-    :param fake_pad: true if padding should be added
-    :return: (X, y) as np.arrays. X shape will be (samples, features),
-    y will be (samples) or (samples, categories) depending if binary or
-    multiclass classification
-    """
-    x = []
-    y = []  # using lists since I don't know the final size beforehand
-    # This is hardcoded because also the minimum cut is hardcoded
-    assert data.get_features() > 31, "Minimum number of features is 32"
-    cat_no = data.get_categories()
-    for i in range(0, cat_no):
-        samples = data.get(i)
-        if samples:
-            # multiclass, generate array with prediction for each class
-            if cat_no > 2:
-                expected = [0.0] * data.get_categories()
-                expected[i] = 1.0
-                expected = [expected for _ in range(0, len(samples))]
-                y.extend(expected)
-            # binary, single value 0 or 1 is sufficient
-            else:
-                expected = [i] * len(samples)
-                y.extend(expected)
-            # keras does not like bytearrays, so int list then
-            # also, randomly cut a portion of them, so network learns to deal
-            # with padding
-            if fake_pad:
-                cut = np.random.randint(31, data.get_features(), len(samples))
-                samples_int = [list(sample)[:cut[idx]]
-                               for idx, sample in enumerate(samples)]
-            else:
-                samples_int = [list(sample) for sample in samples]
-            x.extend(samples_int)
-    x = np.array(x)
-    y = np.array(y)
-    assert len(x) == len(y), "Something went wrong... different X and y len"
-    indices = np.arange(x.shape[0])
-    np.random.shuffle(indices)
-    x = x[indices]
-    y = y[indices]
-    return x, y
+    train.close()
+    validate.close()
 
 
 def model_dense(classes: int, features: int) -> Sequential:
