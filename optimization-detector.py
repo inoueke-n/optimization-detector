@@ -37,7 +37,7 @@ class FlagDetectionTrainer:
                   f"output_dir\n"
         )
         parser.add_argument("input",
-                            nargs="*",
+                            nargs="+",
                             metavar="file",
                             help="Binary file(s) that should be used for data "
                                  "extraction.")
@@ -64,7 +64,8 @@ class FlagDetectionTrainer:
                   f"-c "
                   f"category data_dir model_dir\n")
         parser.add_argument("data_dir",
-                            help="Path to the folder (or to a single file) "
+                            nargs="+",
+                            help="Path to the folder(s) (or to single files) "
                                  "containing the unprocessed data")
         parser.add_argument("model_dir",
                             help="Path to the folder that will contain the "
@@ -83,11 +84,18 @@ class FlagDetectionTrainer:
         parser.add_argument("-b", "--balance", action="store_true",
                             help="Decides whether the amount of samples "
                                  "should be the same for every class or not.")
+        parser.add_argument("--incomplete", action="store_true",
+                            help="Generates an incomplete dataset, "
+                                 "effectively skipping deduplication, "
+                                 "shuffling and splitting between "
+                                 "train/validation/test. This assumes that "
+                                 "another preprocess will be called later "
+                                 "without this flag enabled")
         parsed_args = parser.parse_args(args)
         run_preprocess(parsed_args.data_dir, int(parsed_args.category),
                        parsed_args.model_dir, parsed_args.encoded,
                        int(parsed_args.features), parsed_args.balance,
-                       parsed_args.seed)
+                       parsed_args.seed, parsed_args.incomplete)
 
     @staticmethod
     def train(args):

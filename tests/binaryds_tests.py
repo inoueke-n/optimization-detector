@@ -78,7 +78,7 @@ class TestBinaryDs(TestCase):
         dataset = BinaryDs(file, features=1024).open()
         dataset.close()
         with BinaryDs(file, features=2048, read_only=True) as dataset:
-            self.assertEquals(dataset.get_features(), 1024)
+            self.assertEqual(dataset.get_features(), 1024)
 
     # Write a file. Then read it. Assert the content is ok
     def test_read_write(self):

@@ -12,9 +12,9 @@ MINIMUM_FEATURES: int = 32
 csv.field_size_limit(sys.maxsize)
 
 
-def run_preprocess(input_dir: str, category: int, model_dir: str,
+def run_preprocess(input_dir: List[str], category: int, model_dir: str,
                    openc: bool, features: int, balanced: bool,
-                   seed: int) -> None:
+                   seed: int, incomplete: bool) -> None:
     """
     Performs the preprocessing by adding a category and writes (or updates) the
     binary file containing the dataset on disk
@@ -29,28 +29,41 @@ def run_preprocess(input_dir: str, category: int, model_dir: str,
     :param balanced: True if the produced dataset should have the same
     amount of training/testing/validate samples for each category
     :param seed: The seed that will be used for shuffling
+    :param incomplete: True if the dataset won't be splitted, deduplicated
+     or shuffled
     """
     assert (os.path.exists(model_dir))
     train, validate, test = __load_all_into_train(model_dir, features, openc)
     print("Reading and adding new files... ", flush=True)
     files = gather_files(input_dir, openc)
     read_and_add(train, files, category)
-    print(colored("OK", "green", attrs=['bold']), flush=True)
-    print("Deduplicating... ", end="", flush=True)
-    train.deduplicate()
-    print(colored("OK", "green", attrs=['bold']), flush=True)
-    print("Shuffling... ", end="", flush=True)
-    train.shuffle(seed)
-    print(colored("OK", "green", attrs=['bold']), flush=True)
-    print("Balancing... ", end="", flush=True)
-    if balanced:
-        train.balance()
-        print(colored("OK", "green", attrs=['bold']), flush=True)
-    else:
+    if incomplete:
+        print("Deduplicating... ", end="", flush=True)
         print(colored("SKIP", "white", attrs=['bold']), flush=True)
-    print("Writing... ", end="", flush=True)
-    train.split(validate, 0.5)
-    validate.split(test, 0.5)
+        print("Shuffling... ", end="", flush=True)
+        print(colored("SKIP", "white", attrs=['bold']), flush=True)
+        print("Balancing... ", end="", flush=True)
+        print(colored("SKIP", "white", attrs=['bold']), flush=True)
+        print("Splitting... ", end="", flush=True)
+        print(colored("SKIP", "white", attrs=['bold']), flush=True)
+    else:
+        print("Deduplicating... ", end="", flush=True)
+        train.deduplicate()
+        print(colored("OK", "green", attrs=['bold']), flush=True)
+        print("Shuffling... ", end="", flush=True)
+        train.shuffle(seed)
+        print(colored("OK", "green", attrs=['bold']), flush=True)
+        print("Balancing... ", end="", flush=True)
+        if balanced:
+            train.balance()
+            print(colored("OK", "green", attrs=['bold']), flush=True)
+        else:
+            print(colored("SKIP", "white", attrs=['bold']), flush=True)
+        print("Splitting... ", end="", flush=True)
+        train.split(validate, 0.5)
+        validate.split(test, 0.5)
+        print(colored("OK", "green", attrs=['bold']), flush=True)
+    print("Finalizing... ", end="", flush=True)
     train.close()
     validate.close()
     test.close()
@@ -85,6 +98,7 @@ def read_and_add(dataset: BinaryDs, files: List[str], category: int) -> None:
     :param dataset: dataset where the examples will be added.
     :param category: The category for the current examples.
     """
+    buffer = []
     for cur_file in tqdm(files, ncols=60):
         data = list()
         features = dataset.get_features()
@@ -119,34 +133,45 @@ def read_and_add(dataset: BinaryDs, files: List[str], category: int) -> None:
             chunked = list(filter(lambda l: len(l) == features, chunked))
         # append category and add to dataset
         chunked = [(category, x) for x in chunked]
-        dataset.write(chunked)
+        buffer.extend(chunked)
+        if len(buffer) > int(4194304 / (features + 1)):
+            # write only when a certain size is reached
+            dataset.write(buffer)
+            buffer = []
+    if len(buffer) > 0:
+        # write remaining
+        dataset.write(buffer)
 
 
-def gather_files(path: str, openc: bool) -> List[str]:
+def gather_files(paths: List[str], openc: bool) -> List[str]:
     """
     Finds all files contained in a directory and filter them based on their
     extensions.
-    :param path: Path to the folder containing the files or to a single file
+    :param paths: Paths to the folder containing the files or to a single file
     :param openc: True if opcode based encoding is requested (will parse .csv
     files, .bin otherwise)
     :return A list of paths to every file contained in the folder with .csv
     or .bin extension (based on the function parameter)
     """
-
-    if os.path.isdir(path):
-        files = list()
-        for _, _, found in os.walk(path):
-            for cur_file in found:
-                cur_abs = os.path.join(path, cur_file)
-                files.append(cur_abs)
-    else:
-        files = [path]
-    if openc:
-        ext = ".csv"
-    else:
-        ext = ".bin"
-    files = list(filter(lambda x: os.path.splitext(x)[1] == ext, files))
-    if len(files) == 0:
-        raise FileNotFoundError(f"No files with the correct extension, "
-                                "{ext} were found in the given folder")
+    files = []
+    for path in paths:
+        if os.path.isdir(path):
+            cur_files = []
+            for _, _, found in os.walk(path):
+                for cur_file in found:
+                    cur_abs = os.path.join(path, cur_file)
+                    cur_files.append(cur_abs)
+        else:
+            cur_files = [path]
+        if openc:
+            ext = ".csv"
+        else:
+            ext = ".bin"
+        cur_files = list(
+            filter(lambda x: os.path.splitext(x)[1] == ext, cur_files))
+        if len(cur_files) == 0:
+            raise FileNotFoundError(f"No files with the correct extension, "
+                                    "{ext} were found in the given folder")
+        else:
+            files.extend(cur_files)
     return files

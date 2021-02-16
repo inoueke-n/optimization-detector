@@ -40,7 +40,7 @@ class BinaryDs:
         """
         self.magic: int = MAGIC
         self.encoded: bool = encoded
-        self.categories: int = 0
+        self.modified: bool = False  # true if some write has been performed
         self.path: str = path
         self.features: int = features
         self.examples: int = 0
@@ -80,6 +80,8 @@ class BinaryDs:
         Closes an open dataset.
         """
         if self.file:
+            if self.modified:
+                self.__write_max_cats()
             self.file.close()
             self.file = None
 
@@ -103,16 +105,19 @@ class BinaryDs:
         return cats
 
     # read the max cat value inside the binary on disk
-    def __read_max_cats(self):
+    def __read_max_cats(self) -> int:
         self.file.seek(1, os.SEEK_SET)
         data = int.from_bytes(self.file.read(1), byteorder="little")
-        self.encoded = (data & 0x80) > 0
-        self.categories = data & 0x7F
+        return data & 0x7F
+
+    def __read_encoding(self) -> bool:
+        self.file.seek(1, os.SEEK_SET)
+        data = int.from_bytes(self.file.read(1), byteorder="little")
+        return data & 0x80 > 0
 
     # writes the max cat value inside the binary on disk
     def __write_max_cats(self):
         cats = self.__calc_max_cat()
-        self.categories = cats
         self.file.seek(1, os.SEEK_SET)
         data = (int(self.encoded) << 7) | (cats & 0x7F)
         self.file.write(data.to_bytes(1, byteorder="little"))
@@ -137,7 +142,7 @@ class BinaryDs:
             self.file = None
             raise IOError("The existing file has a different encoding type")
         else:
-            self.__read_max_cats()
+            self.encoded = self.__read_encoding()
         if not self.ro and self.features != features:
             self.file.close()
             self.file = None
@@ -161,7 +166,7 @@ class BinaryDs:
         category 2, this function will return 3 despite the category 1 being
         missing.
         """
-        return self.categories
+        return self.__read_max_cats()
 
     def get_features(self) -> int:
         """
@@ -175,12 +180,15 @@ class BinaryDs:
         """
         return self.examples
 
-    def write(self, data: List[(int, bytes)]) -> None:
+    def write(self, data: List[(int, bytes)],
+              update_categories: bool = False) -> None:
         """
         Writes a list of examples in the file.
         Throws ValueError if the tuple has a different length compared to the
         one passed in the constructor.
         :param data: A tuple (category id, data) that will be written.
+        :param update_categories: True if the max number of categories should
+        be updated. This will be done in any case when closing the file.
         """
         for val in data:
             if len(val[1]) != self.features:
@@ -193,7 +201,9 @@ class BinaryDs:
         for val in data:
             self.file.write(val[0].to_bytes(1, byteorder="little"))
             self.file.write(val[1])
-        self.__write_max_cats()
+        self.modified = True
+        if update_categories:
+            self.__write_max_cats()
 
     def read(self, index: int, amount: int = 1) -> List[(int, bytes)]:
         """
@@ -294,19 +304,19 @@ class BinaryDs:
             raise IOError("To merge two datasets they must have the same "
                           "features")
         examples_no = other.examples
-        features_size = self.features + 1
-        amount = int(BLOCK_SIZE / features_size)
-        iterations = int(examples_no / amount)
-        for i in range(iterations):
-            read = other.read(i * amount, amount)
-            self.write(read)
-        remainder = examples_no % amount
-        if remainder > 0:
-            read = other.read(iterations, remainder)
-            self.write(read)
-        self.__write_max_cats()
-        # remove from other file and update elements amount
-        other.truncate()
+        if examples_no > 0:
+            features_size = self.features + 1
+            amount = int(BLOCK_SIZE / features_size)
+            iterations = int(examples_no / amount)
+            for i in range(iterations):
+                read = other.read(i * amount, amount)
+                self.write(read)
+            remainder = examples_no % amount
+            if remainder > 0:
+                read = other.read(iterations, remainder)
+                self.write(read)
+            # remove from other file and update elements amount
+            other.truncate()
 
     def split(self, other: BinaryDs, ratio: float) -> None:
         """
@@ -321,21 +331,20 @@ class BinaryDs:
                           "features")
 
         examples_no = int(self.examples * ratio)
-        features_size = self.features + 1
-        amount = int(BLOCK_SIZE / features_size)
-        iterations = int(examples_no / amount)
-        for _ in range(iterations):
-            read = self.read(self.examples - amount, amount)
-            other.write(read)
-            self.truncate(self.examples - amount)
+        if examples_no > 0:
+            features_size = self.features + 1
+            amount = int(BLOCK_SIZE / features_size)
+            iterations = int(examples_no / amount)
+            for _ in range(iterations):
+                read = self.read(self.examples - amount, amount)
+                other.write(read)
+                self.truncate(self.examples - amount)
 
-        remainder = examples_no % amount
-        if remainder > 0:
-            read = self.read(self.examples - remainder, remainder)
-            other.write(read)
-            self.truncate(self.examples - remainder)
-        other.__write_max_cats()
-        self.__write_max_cats()
+            remainder = examples_no % amount
+            if remainder > 0:
+                read = self.read(self.examples - remainder, remainder)
+                other.write(read)
+                self.truncate(self.examples - remainder)
 
     def deduplicate(self) -> None:
         """
