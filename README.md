@@ -22,7 +22,7 @@ This repository contains only the code, pre-trained models can be found at the
 [following link](https://zenodo.org/record/3865122#.X0XzttP7T_Q)
   
 ## Pre-requisites
-In order to run the code python 3.7+ is required. Additional dependencies are
+In order to run the code python 3.6+ is required. Additional dependencies are
 listed in the [`requirements.txt`](requirements.txt) file and may be
 installed with `pip`.
 However, having a GPU supporting CUDA is suggested. This implies installing 

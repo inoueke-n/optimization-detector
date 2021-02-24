@@ -5,9 +5,9 @@ import sys
 
 from src.extractor import run_extractor
 from src.inference import run_inference
-from src.learning import run_train, run_evaluation
 from src.preprocess import run_preprocess
 from src.summary import run_summary
+from src.train import run_train
 
 
 class FlagDetectionTrainer:
@@ -176,10 +176,10 @@ class FlagDetectionTrainer:
                             help="Increment for each iteration of the "
                                  "evaluator. 0 for exp increment.")
         parsed_args = parser.parse_args(args)
-        run_evaluation(parsed_args.model_dir, parsed_args.output,
-                       int(parsed_args.cut), int(parsed_args.increment),
-                       int(parsed_args.seed), int(parsed_args.fixed),
-                       parsed_args.batchsize)
+        # run_evaluation(parsed_args.model_dir, parsed_args.output,
+        #                int(parsed_args.cut), int(parsed_args.increment),
+        #                int(parsed_args.seed), int(parsed_args.fixed),
+        #                parsed_args.batchsize)
 
     @staticmethod
     def summary(args):
@@ -224,14 +224,14 @@ class FlagDetectionTrainer:
                                  "Default to the number of CPUs in the "
                                  "system.")
         parsed_args = parser.parse_args(args)
-        run_inference(parsed_args.input,
-                      parsed_args.dir,
-                      parsed_args.model,
-                      parsed_args.encoded,
-                      parsed_args.output,
-                      int(parsed_args.batch),
-                      int(parsed_args.features),
-                      int(parsed_args.threads))
+        # run_inference(parsed_args.input,
+        #               parsed_args.dir,
+        #               parsed_args.model,
+        #               parsed_args.encoded,
+        #               parsed_args.output,
+        #               int(parsed_args.batch),
+        #               int(parsed_args.features),
+        #               int(parsed_args.threads))
 
 
 if __name__ == "__main__":

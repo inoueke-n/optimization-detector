@@ -1,10 +1,8 @@
-from __future__ import annotations
-
 import hashlib
 import heapq
 import os
 import random
-from typing import BinaryIO, Optional, List
+from typing import BinaryIO, Optional, List, Tuple
 
 HEADER_SIZE = 8
 MAGIC = 0x27
@@ -47,7 +45,7 @@ class BinaryDs:
         self.ro: bool = read_only
         self.file: Optional[BinaryIO] = None
 
-    def open(self) -> BinaryDs:
+    def open(self):
         """
         Opens a Binary dataset for editing. Creates it if not existing iff
         read_only was set to False in the constructor.
@@ -180,7 +178,7 @@ class BinaryDs:
         """
         return self.examples
 
-    def write(self, data: List[(int, bytes)],
+    def write(self, data: List[Tuple[int, bytes]],
               update_categories: bool = False) -> None:
         """
         Writes a list of examples in the file.
@@ -205,7 +203,7 @@ class BinaryDs:
         if update_categories:
             self.__write_max_cats()
 
-    def read(self, index: int, amount: int = 1) -> List[(int, bytes)]:
+    def read(self, index: int, amount: int = 1) -> List[Tuple[int, bytes]]:
         """
         Reads some examples from the dataset.
         Raises IndexError if index+amount is higher than the number of
@@ -293,7 +291,7 @@ class BinaryDs:
         self.examples = left
         self.file.write(self.examples.to_bytes(4, byteorder="little"))
 
-    def merge(self, other: BinaryDs) -> None:
+    def merge(self, other) -> None:
         """
         Removes all the content from other and puts it into self
         """
@@ -318,7 +316,7 @@ class BinaryDs:
             # remove from other file and update elements amount
             other.truncate()
 
-    def split(self, other: BinaryDs, ratio: float) -> None:
+    def split(self, other, ratio: float) -> None:
         """
         Removes part of self and put it to other.
         The variable ration is #examples_kept/#examples_given

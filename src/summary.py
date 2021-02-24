@@ -19,7 +19,7 @@ def run_summary(model_dir: str) -> None:
     assert os.path.exists(validate_bin), "Validation dataset does not exists!"
     train = BinaryDs(train_bin, read_only=True).open()
     train_categories = count_categories(train)
-    openc = not train.is_encoded()
+    openc = train.is_encoded()
     features = train.get_features()
     train.close()
     val = BinaryDs(validate_bin, read_only=True).open()

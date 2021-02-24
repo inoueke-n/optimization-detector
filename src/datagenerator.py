@@ -6,6 +6,8 @@ from tensorflow.keras.preprocessing import sequence
 
 from src.binaryds import BinaryDs
 
+LN100 = 2 * np.log(10)
+
 
 class DataGenerator(keras.utils.Sequence):
 
@@ -58,12 +60,12 @@ class DataGenerator(keras.utils.Sequence):
         # also, randomly cut a portion of them, so network learns to deal
         # with padding
         if not self.dataset.is_encoded() and self.fake_pad:
-            limit = self.dataset.features - 31
+            limit = self.dataset.features - 32
             # calculate the lambda so the maximum value we want is at 4 sd
             # of course we can get higher than that, but it is highly unlikely
             # and clamping does not break the training too much
-            elambda = 4/limit
-            exp = np.random.default_rng().exponential(1/elambda, size=len(x))
+            elambda = LN100 / limit
+            exp = np.random.default_rng().exponential(1 / elambda, size=len(x))
             # clamping destroys the distribution, but it's not a big deal
             exp = np.array(np.floor(np.clip(exp, 0, limit)), dtype=np.int32)
             with open('/tmp/samples.txt', 'a') as file:
