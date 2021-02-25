@@ -239,20 +239,22 @@ class TestBinaryDs(TestCase):
 
     def test_deduplicate(self):
         file = os.path.join(self.tmpdir, "deduplicate.bin")
-        expected = [self.data_raw[0]] + \
-                   [self.data_raw2[-1]] + \
-                   self.data_raw[1:] + \
-                   self.data_raw2[:-1]
         with BinaryDs(file, features=14) as dataset:
             dataset.write([self.data_raw[0]])
             dataset.write(self.data_raw)
             dataset.write(self.data_raw2)
             dataset.write(self.data_raw)
             dataset.write(self.data_raw2)
+            dataset.write(self.data_raw2)
+            dataset.write(self.data_raw2)
+            dataset.write(self.data_raw2)
+            dataset.write(self.data_raw)
+            dataset.write(self.data_raw)
+            dataset.write(self.data_raw2)
         with BinaryDs(file, features=14) as dataset:
             dataset.deduplicate()
             data = dataset.read(0, 11)
-            self.assertEqual(data, expected)
+            self.assertEqual(len(data), len(set(data)))
 
     def test_update_categories(self):
         file = os.path.join(self.tmpdir, "categories.bin")

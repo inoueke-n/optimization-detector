@@ -17,10 +17,10 @@ from .datagenerator import DataGenerator
 MODEL_NAME = "model.h5"
 
 
-def run_train(model_dir: str, seed: int, network: str, bs: int) -> None:
+def run_train(data_dir: str, seed: int, network: str, bs: int) -> None:
     """
     Trains the model
-    :param model_dir: string pointing to the folder containing the train.bin
+    :param data_dir: string pointing to the folder containing the train.bin
     and validation.bin files (generated with the run_preprocess function)
     :param seed: seed that will be used for training
     :param network: either "dense", "lstm" or "cnn", to choose which
@@ -29,21 +29,21 @@ def run_train(model_dir: str, seed: int, network: str, bs: int) -> None:
     """
     if seed == 0:
         seed = int(time.time())
-    assert os.path.exists(model_dir), "Model directory does not exists!"
-    train_bin = os.path.join(model_dir, "train.bin")
-    validate_bin = os.path.join(model_dir, "validate.bin")
+    assert os.path.exists(data_dir), "Model directory does not exists!"
+    train_bin = os.path.join(data_dir, "train.bin")
+    validate_bin = os.path.join(data_dir, "validate.bin")
     assert os.path.exists(train_bin), "Train dataset does not exists!"
     assert os.path.exists(validate_bin), "Validation dataset does not exists!"
     train = BinaryDs(train_bin, read_only=True).open()
     validate = BinaryDs(validate_bin, read_only=True).open()
-    model_network_dir = os.path.join(model_dir, network)
-    model_path = os.path.join(model_network_dir, MODEL_NAME)
+    model_dir = os.path.join(data_dir, network)
+    model_path = os.path.join(model_dir, MODEL_NAME)
     if os.path.exists(model_path):
         print("Loading previously created model")
         model = load_model(model_path)
     else:
         print(f"Creating new {network} model")
-        os.makedirs(model_network_dir, exist_ok=True)
+        os.makedirs(model_dir, exist_ok=True)
         if network == "lstm":
             model = model_lstm(train.get_categories(), train.get_features())
         elif network == "cnn":
@@ -59,7 +59,7 @@ def run_train(model_dir: str, seed: int, network: str, bs: int) -> None:
                                  monitor="val_loss",
                                  verbose=1,
                                  save_best_only=True)
-    tensorboard_logs = os.path.join(model_network_dir, 'logs')
+    tensorboard_logs = os.path.join(model_dir, 'logs')
     os.makedirs(tensorboard_logs, exist_ok=True)
     tensorboad = TensorBoard(log_dir=tensorboard_logs,
                              histogram_freq=1,

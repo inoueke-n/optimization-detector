@@ -12,7 +12,7 @@ MINIMUM_FEATURES: int = 32
 csv.field_size_limit(sys.maxsize)
 
 
-def run_preprocess(input_dir: List[str], category: int, model_dir: str,
+def run_preprocess(input_dir: List[str], category: int, output_dir: str,
                    openc: bool, features: int, balanced: bool,
                    seed: int, incomplete: bool) -> None:
     """
@@ -21,8 +21,8 @@ def run_preprocess(input_dir: List[str], category: int, model_dir: str,
     :param input_dir The folder where the examples for a single category can be
      found
     :param category: The id of the category that will be written
-    :param model_dir: Path to the folder where the train.bin and test.bin
-    can be found (or will be created)
+    :param output_dir: Path to the folder where the train.bin and test.bin
+    can be found (or will be created).
     :param openc: True if this method has a function opcode encoding
     :param features: How many features (i.e. The number of bytes for each
     example)
@@ -32,8 +32,8 @@ def run_preprocess(input_dir: List[str], category: int, model_dir: str,
     :param incomplete: True if the dataset won't be splitted, deduplicated
      or shuffled
     """
-    assert (os.path.exists(model_dir))
-    train, validate, test = __load_all_into_train(model_dir, features, openc)
+    assert (os.path.exists(output_dir))
+    train, validate, test = __load_all_into_train(output_dir, features, openc)
     print("Reading and adding new files... ", flush=True)
     files = gather_files(input_dir, openc)
     read_and_add(train, files, category)
@@ -70,13 +70,13 @@ def run_preprocess(input_dir: List[str], category: int, model_dir: str,
     print(colored("OK", "green", attrs=['bold']), flush=True)
 
 
-def __load_all_into_train(model_dir: str, features: int,
+def __load_all_into_train(output_dir: str, features: int,
                           openc: bool) -> (BinaryDs, BinaryDs, BinaryDs):
     # Load all the files into the train dataset
     print("Loading old dataset... ", end="", flush=True)
-    path_train = os.path.join(model_dir, "train.bin")
-    path_val = os.path.join(model_dir, "validate.bin")
-    path_test = os.path.join(model_dir, "test.bin")
+    path_train = os.path.join(output_dir, "train.bin")
+    path_val = os.path.join(output_dir, "validate.bin")
+    path_test = os.path.join(output_dir, "test.bin")
     train = BinaryDs(path_train, features=features, encoded=openc).open()
     test = BinaryDs(path_test, features=features, encoded=openc).open()
     validate = BinaryDs(path_val, features=features, encoded=openc).open()

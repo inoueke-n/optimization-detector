@@ -1,5 +1,4 @@
 import hashlib
-import heapq
 import os
 import random
 from typing import BinaryIO, Optional, List, Tuple
@@ -348,8 +347,6 @@ class BinaryDs:
         """
         Removes all duplicates from the current binary.
         The order of data may change.
-        This has a unlikely small chance of removing elements that are not
-        duplicates, but this is a dataset and not a database so who cares ;)
         """
         feature_size = self.features + 1
         chunk_size = BLOCK_SIZE + feature_size  # around 4 MiB ;)
@@ -357,49 +354,52 @@ class BinaryDs:
         chunk_elements = int(chunk_size / feature_size)
         chunks_no = int(self.examples / chunk_elements)
         hashes = set()
-        remove = []
+        toremove = set()
         chunk_index = 0
-        heapq.heapify(remove)
         for _ in range(chunks_no):
             self.__calculate_hashes_from_chunk(chunk_elements, chunk_index,
-                                               hashes, remove)
+                                               hashes, toremove)
             chunk_index += 1
         remainder = self.examples % chunk_elements
         if remainder > 0:
             self.__calculate_hashes_from_chunk(remainder, chunk_index,
-                                               hashes, remove)
+                                               hashes, toremove)
         del hashes
-        # actual removal (pop element from the end, replace first index)
-        while len(remove) != 0:
-            index = heapq.heappop(remove)
-            if index == self.examples - 1:
-                # element to remove is the last one, just remove it
-                self.examples -= 1
-                self.file.truncate(HEADER_SIZE + feature_size * self.examples)
-                self.file.seek(4, os.SEEK_SET)
-                self.file.write(self.examples.to_bytes(4, byteorder="little"))
-            else:
-                # read last element, remove it and overwrite duplicate
-                self.file.seek(
-                    HEADER_SIZE + feature_size * (self.examples - 1),
-                    os.SEEK_SET)
-                data = self.file.read(feature_size)
-                self.examples -= 1
-                self.file.truncate(HEADER_SIZE + feature_size * self.examples)
-                self.file.seek(HEADER_SIZE + index * feature_size, os.SEEK_SET)
-                self.file.write(data)
-                self.file.seek(4, os.SEEK_SET)
-                self.file.write(self.examples.to_bytes(4, byteorder="little"))
+        # iterate every element from beginning to end
+        for i in range(self.examples-1):
+            # deal with updating of the self.examples variable
+            if i >= self.examples:
+                break
+            # if I have to remove current element
+            if i in toremove:
+                # pick an element from end, candidate for elimination
+                j = self.examples - 1
+                while j > i and j in toremove:
+                    self.examples -= 1
+                    j = self.examples - 1
+                # there is an actual replacement
+                if j != i:
+                    self.file.seek(HEADER_SIZE + feature_size * j, os.SEEK_SET)
+                    data = self.file.read(feature_size)
+                    self.file.seek(HEADER_SIZE + feature_size * i, os.SEEK_SET)
+                    self.file.write(data)
+                    self.examples = j
+                # there is no replacement, simply delete last entry
+                else:
+                    self.examples = i
+        # update examples
+        self.file.seek(4, os.SEEK_SET)
+        self.file.write(self.examples.to_bytes(4, byteorder="little"))
         self.__write_max_cats()
 
     def __calculate_hashes_from_chunk(self, chunk_elements, chunk_index,
-                                      hashes, remove):
+                                      hashes, toremove):
         # internal method used in the deduplicate function
         data = self.read(chunk_index * chunk_elements, chunk_elements)
         for count, elem in enumerate(data):
             index = chunk_index * chunk_elements + count
-            cur_hash = hashlib.md5(elem[1]).digest()
+            cur_hash = hashlib.sha1(elem[1]).digest()
             if cur_hash in hashes:
-                heapq.heappush(remove, index)
+                toremove.add(index)
             else:
                 hashes.add(cur_hash)
