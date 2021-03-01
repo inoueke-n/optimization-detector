@@ -3,7 +3,7 @@ import functools
 import multiprocessing
 import sys
 
-#from src.evaluation import run_evaluation
+from src.evaluation import run_evaluation
 from src.extractor import run_extractor
 from src.preprocess import run_preprocess
 from src.summary import run_summary
@@ -125,8 +125,10 @@ class FlagDetectionTrainer:
     def evaluate(args):
         parser = argparse.ArgumentParser(
             description="Run the evaluation on a trained model. This will "
-                        "evaluate the confusion matrix with increasing "
-                        "number of features.",
+                        "evaluate the accuracy with increasing "
+                        "number of features. Additionally, with the parameter "
+                        "--confusion it is possible to evaluate the confusion "
+                        "matrix for a set number of features",
             usage=f"{sys.argv[0]} train [optional args] model_dir\n")
         parser.add_argument("data_dir",
                             help="Folder for the model containing the "
@@ -138,18 +140,17 @@ class FlagDetectionTrainer:
                             default="output.csv",
                             help="Output file where the test results will be "
                                  "written. The file will be a .csv file.")
-        parser.add_argument("-f", "--fixed", metavar="value", default="0",
-                            help="Test for a single number of features.")
+        parser.add_argument("-c", "--confusion", metavar="value", default=0,
+                            help="Prints the confusion matrix for a single "
+                                 "number of features.", type=int)
         parser.add_argument("-s", "--seed", metavar="seed", default="0",
                             help="Seed used to create the sequences.")
         parser.add_argument("-b", "--batchsize",
                             default=256, type=int)
         parsed_args = parser.parse_args(args)
-        #run_evaluation(parsed_args.data_dir, parsed_args.model_path,
-        #               parsed_args.output,
-        #               int(parsed_args.cut),
-        #               int(parsed_args.seed), int(parsed_args.fixed),
-        #               parsed_args.batchsize)
+        run_evaluation(parsed_args.data_dir, parsed_args.model_path,
+                       parsed_args.output, int(parsed_args.seed),
+                       parsed_args.confusion, parsed_args.batchsize)
 
     @staticmethod
     def summary(args):

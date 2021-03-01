@@ -12,21 +12,36 @@ LN100 = 2 * np.log(10)
 class DataGenerator(keras.utils.Sequence):
 
     def __init__(self, dataset: BinaryDs, batch_size: int,
-                 fake_pad: bool = True):
+                 predict: bool = False,
+                 fake_pad: bool = False, pad_len: int = 0):
         self.dataset: BinaryDs = dataset
         self.batch_size = batch_size
         self.indices: List[int] = []
         self.fake_pad = fake_pad
-        self.len = int(self.dataset.get_examples_no() / self.batch_size)
+        self.pad_len = pad_len
+        self.predict = predict
+        self.len = 0
+        self.remainder = 0
+        self.__init_len()
         self.on_epoch_end()
+
+    def __init_len(self):
+        """
+        Sets self.len and self.remainder (used at init time)
+        :return:
+        """
+        self.len = int(self.dataset.get_examples_no() / self.batch_size)
+        self.remainder = self.dataset.get_examples_no() % self.batch_size
+        if self.remainder > 0:
+            self.len += 1
 
     def __len__(self):
         return self.len
 
     def __getitem__(self, index):
         real_index = self.indices[index]
-        if real_index == self.len:
-            amount = self.dataset.get_examples_no() % self.batch_size
+        if self.remainder > 0 and real_index == self.len - 1:
+            amount = self.remainder
         else:
             amount = self.batch_size
         data = self.dataset.read(real_index * self.batch_size, amount)
@@ -34,10 +49,10 @@ class DataGenerator(keras.utils.Sequence):
 
     def on_epoch_end(self):
         self.indices = np.arange(self.len)
-        np.random.shuffle(self.indices)
+        if not self.predict:
+            np.random.shuffle(self.indices)
 
-    def __generate_sequences(self, data: List[Tuple[int, bytes]]) -> (
-            np.array, np.array):
+    def __generate_sequences(self, data: List[Tuple[int, bytes]]):
         """
         Generates the pairs (X, y) that will be used during the training.
         More specifically generates y and shuffle X.
@@ -55,22 +70,40 @@ class DataGenerator(keras.utils.Sequence):
             y = keras.utils.to_categorical(y, num_classes=cats)
         else:
             y = [[y] for y in y]
-            pass
         # keras does not like bytearrays, so int list then
-        # also, randomly cut a portion of them, so network learns to deal
-        # with padding
+        # cut a portion of example so network learns to deal with padding
         if not self.dataset.is_encoded() and self.fake_pad:
-            limit = self.dataset.features - 32
-            # calculate the lambda so the maximum value we want is at 4 sd
-            # of course we can get higher than that, but it is highly unlikely
-            # and clamping does not break the training too much
-            elambda = LN100 / limit
-            exp = np.random.default_rng().exponential(1 / elambda, size=len(x))
-            # clamping destroys the distribution, but it's not a big deal
-            exp = np.array(np.floor(np.clip(exp, 0, limit)), dtype=np.int32)
-            with open('/tmp/samples.txt', 'a') as file:
-                np.savetxt(fname=file, X=exp, delimiter="\n", fmt='%05d')
-            x = [list(sample)[:-exp[idx]] for idx, sample in enumerate(x)]
+            # amount of removed data randomly decided
+            if self.pad_len == 0:
+                limit = self.dataset.features - 32
+                # 99% values should be between 0 and limit
+                elambda = LN100 / limit
+                beta = 1 / elambda
+                d = np.random.default_rng().exponential(beta, size=len(x))
+                # clamping destroys the distribution, not a big deal
+                cut = np.array(np.floor(np.clip(d, 0, limit)),
+                               dtype=np.int32)
+                x = [list(sample)[:-cut[idx]] for idx, sample in enumerate(x)]
+            # amount of removed data is a fixed value
+            elif self.dataset.features != self.pad_len:
+                cut = np.full(len(x), self.dataset.features - self.pad_len)
+                x = [list(sample)[:-cut[idx]] for idx, sample in enumerate(x)]
+            else:
+                x = [list(sample) for sample in x]
+        # keep only encoded examples of `pad_len` length
+        elif self.dataset.is_encoded() and self.pad_len != 0:
+            res = []
+            for sample in x:
+                length = 0
+                for byte in sample:
+                    if byte != 0x00:
+                        break
+                    else:
+                        length += 1
+                if length >= self.pad_len:
+                    res.append(list(sample[:self.pad_len]))
+            x = res
+        # keep everything without removing data
         else:
             x = [list(sample) for sample in x]
         x = np.array(x)
@@ -80,8 +113,11 @@ class DataGenerator(keras.utils.Sequence):
         y = np.array(y)
         assert len(x) == len(y), \
             "Something went wrong... different X and y len"
-        indices = np.arange(x.shape[0])
-        np.random.shuffle(indices)
-        x = x[indices]
-        y = y[indices]
-        return x, y
+        if self.predict:
+            return x
+        else:
+            indices = np.arange(x.shape[0])
+            np.random.shuffle(indices)
+            x = x[indices]
+            y = y[indices]
+            return x, y

@@ -71,8 +71,8 @@ def run_train(data_dir: str, seed: int, network: str, bs: int) -> None:
                                   min_delta=0.001,
                                   patience=3,
                                   mode="auto")
-    gen_train = DataGenerator(train, bs)
-    gen_val = DataGenerator(validate, bs)
+    gen_train = DataGenerator(train, bs, fake_pad=True)
+    gen_val = DataGenerator(validate, bs, fake_pad=False)
     model.fit(gen_train,
               validation_data=gen_val,
               epochs=40,
