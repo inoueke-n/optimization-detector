@@ -76,7 +76,7 @@ def evaluate_incremental(bs: int, file: str, model_path: str,
             cut = cut + 33
         elif cut < 500:
             cut = cut + 61
-        elif cut <= features:
+        elif cut < features:
             cut = cut + 129
             cut = min(cut, features)
         else:
@@ -118,12 +118,16 @@ def evaluate_confusion(bs: int, file: str, fixed: int, model_path: str,
     :param test_bin: path to the test dataset that will be used
     """
     test = BinaryDs(test_bin, read_only=True).open()
+    binary = test.get_categories() <= 2
     model = load_model(model_path)
     generator = DataGenerator(test, bs, fake_pad=True, pad_len=fixed,
                               predict=True)
     expected = get_expected(bs, test)
     predicted = model.predict(generator, verbose=1)
-    predicted = np.argmax(predicted, axis=1)
+    if binary:
+        predicted = np.round(predicted).flatten().astype(np.int8)
+    else:
+        predicted = np.argmax(predicted, axis=1)
     matrix = np.array(tf.math.confusion_matrix(expected, predicted))
     with open(file, "w") as f:
         np.savetxt(f, X=matrix, fmt="%d")
