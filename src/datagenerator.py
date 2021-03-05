@@ -92,17 +92,21 @@ class DataGenerator(keras.utils.Sequence):
                 x = [list(sample) for sample in x]
         # keep only encoded examples of `pad_len` length
         elif self.dataset.is_encoded() and self.pad_len != 0:
-            res = []
+            new_x = []
             for sample in x:
-                length = 0
+                padded = 0
                 for byte in sample:
                     if byte != 0x00:
                         break
                     else:
-                        length += 1
-                if length >= self.pad_len:
-                    res.append(list(sample[:self.pad_len]))
-            x = res
+                        padded += 1
+                if self.dataset.get_features() - padded <= self.pad_len:
+                    # shorter than requested, keep intact
+                    new_x.append(sample)
+                else:
+                    # longer than requested, cut it to the requested len
+                    new_x.append(sample[-self.pad_len:])
+            x = [list(sample) for sample in new_x]
         # keep everything without removing data
         else:
             x = [list(sample) for sample in x]
