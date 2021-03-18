@@ -5,6 +5,7 @@ import sys
 
 from src.evaluation import run_evaluation
 from src.extractor import run_extractor
+from src.inference import run_inference
 from src.preprocess import run_preprocess
 from src.summary import run_summary
 from src.train import run_train
@@ -73,12 +74,12 @@ class FlagDetectionTrainer:
                                  " found, it will be merged with this one.")
         parser.add_argument("-e", "--encoded", action="store_true",
                             help="Assumes opcode encoded analysis if set.")
-        parser.add_argument("-f", "--features", default=2048,
+        parser.add_argument("-f", "--features", default=2048, type=int,
                             help="Number of features used in the evaluation, "
                                  "defaults to 2048.")
         parser.add_argument("-c", "--category", required=True, metavar="int",
                             help="A number representing the "
-                                 "category label for this data.")
+                                 "category label for this data.", type=int)
         parser.add_argument("-s", "--seed", default=None,
                             help="Seed used for the shuffling process")
         parser.add_argument("-b", "--balance", action="store_true",
@@ -92,9 +93,9 @@ class FlagDetectionTrainer:
                                  "another preprocess will be called later "
                                  "without this flag enabled")
         parsed_args = parser.parse_args(args)
-        run_preprocess(parsed_args.data_dir, int(parsed_args.category),
+        run_preprocess(parsed_args.data_dir, parsed_args.category,
                        parsed_args.output_dir, parsed_args.encoded,
-                       int(parsed_args.features), parsed_args.balance,
+                       parsed_args.features, parsed_args.balance,
                        parsed_args.seed, parsed_args.incomplete)
 
     @staticmethod
@@ -116,9 +117,9 @@ class FlagDetectionTrainer:
                             default=256, type=int)
         parser.add_argument("-s", "--seed", metavar="seed", default=0,
                             help="Seed used to initialize the weights during "
-                                 "training.")
+                                 "training.", type=int)
         parsed_args = parser.parse_args(args)
-        run_train(parsed_args.data_dir, int(parsed_args.seed),
+        run_train(parsed_args.data_dir, parsed_args.seed,
                   parsed_args.network, parsed_args.batchsize)
 
     @staticmethod
@@ -143,13 +144,14 @@ class FlagDetectionTrainer:
         parser.add_argument("-c", "--confusion", metavar="value", default=0,
                             help="Prints the confusion matrix for a single "
                                  "number of features.", type=int)
-        parser.add_argument("-s", "--seed", metavar="seed", default="0",
+        parser.add_argument("-s", "--seed", metavar="seed", 
+                            default="0", type=int,
                             help="Seed used to create the sequences.")
         parser.add_argument("-b", "--batchsize",
                             default=256, type=int)
         parsed_args = parser.parse_args(args)
         run_evaluation(parsed_args.data_dir, parsed_args.model_path,
-                       parsed_args.output, int(parsed_args.seed),
+                       parsed_args.output, parsed_args.seed,
                        parsed_args.confusion, parsed_args.batchsize)
 
     @staticmethod
@@ -170,7 +172,7 @@ class FlagDetectionTrainer:
                         "of some binaries.",
             usage=f"{sys.argv[0]} infer [optional args] -m model "
                   f"input_file\n")
-        parser.add_argument("input", nargs="*", default=None,
+        parser.add_argument("input", nargs="+", default=None,
                             help="List of files that will be used for "
                                  "inference.")
         parser.add_argument("-m", "--model", metavar="filename",
@@ -179,30 +181,17 @@ class FlagDetectionTrainer:
         parser.add_argument("-o", "--output", required=False,
                             help="Output path of the prediction.")
         parser.add_argument("-b", "--batch", required=False,
-                            default="256",
+                            default="256", type=int,
                             help="Maximum batch size for the model.")
-        parser.add_argument("-d", "--dir", required=False,
-                            default=None,
-                            help="Directory containing .bin files")
-        parser.add_argument("-f", "--features", default=2048,
+        parser.add_argument("-f", "--features", default=2048, type=int,
                             help="Number of features used in the training, "
                                  "defaults to 2048.")
-        parser.add_argument("-e", "--encoded", action="store_true",
-                            help="Assumes opcode encoded analysis if set.")
-        parser.add_argument("-t", "--threads", required=False,
-                            default=multiprocessing.cpu_count(),
-                            help="Specifies the number of concurrent jobs. "
-                                 "Default to the number of CPUs in the "
-                                 "system.")
         parsed_args = parser.parse_args(args)
-        # run_inference(parsed_args.input,
-        #               parsed_args.dir,
-        #               parsed_args.model,
-        #               parsed_args.encoded,
-        #               parsed_args.output,
-        #               int(parsed_args.batch),
-        #               int(parsed_args.features),
-        #               int(parsed_args.threads))
+        run_inference(parsed_args.input,
+                      parsed_args.model,
+                      parsed_args.output,
+                      parsed_args.batch,
+                      parsed_args.features)
 
 
 if __name__ == "__main__":
