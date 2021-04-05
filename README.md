@@ -1,16 +1,13 @@
 # Optimization Detector
 This is the companion code for the paper 
-> **Identifying Compiler and Optimization Options from Binary Code using Deep
-> Learning Approaches**
+> **Identifying Compiler and Optimization Level in Binary Code from Multiple 
+Architectures**
 >
 > D. Pizzolotto, K. Inoue
 >
-> *Presented at the 36th IEEE International Conference on Software
-> Maintenance and Evolution,
-> [ICSME 2020](https://icsme2020.github.io/index.html).*
 
 The code in this repository is used to train and evaluate a deep learning
-network capable of recognizing the optimization flags and compiler used in a
+network capable of recognizing the optimization level and compiler used in a
 compiled binary.
 
 With our dataset we tested:
@@ -43,9 +40,14 @@ This software expects a list of binary files as dataset and can use two
 of the binary *(default)*.
 - One expecting the sequence of opcodes composing a function. This analysis
   requires disassembling before extracting the various opcodes, a quite long
-  operation, and is referred in the command line options as *function based*.
+  operation, and is referred in the command line options as *encoded*.
   Given the poor results with this second method, we implemented it only for
-  the `x86_64` architecture.
+  the `x86_64` architecture. All the disassembled functions for this method can 
+  be found in the archive `amd64-encoded.tar.xz` provided in the dataset.
+
+An [additional file](paper_eval.sh) can be used to replicate our evaluation.
+This file should not be run blindly, and is provided only to have an idea of our
+overall training approach. Using it in a different system may require some changes.
 
 ## Usage
 
@@ -56,6 +58,7 @@ The usage of this software consist in the following four parts:
 - Dataset preprocessing
 - Training
 - Evaluation
+- Inference
 
 In the following subsections we explain the basic usage. Additional flags can
 be retrieved by running the program with the `-h` or `--help` option.
@@ -66,8 +69,8 @@ We prepared an automated script capable of generating the dataset using any
 `gcc` cross compiler available on the 
 [Ubuntu Packages repository](https://packages.ubuntu.com/). In this study
 we used this script to prepare the `riscv64`, `sparc64`, `powerpc`, `mips` and 
-`armhf` architectures. If you retrieved our manually-generated dataset, just 
-extract everything and jump to the next subsection.
+`armhf` architectures. If you retrieved our dataset from zenodo, just 
+extract everything and jump to the next section.
 
 Given that compilation results may vary greatly based on the host environment, 
 using `docker` to generate the dataset is mandatory.
@@ -205,6 +208,25 @@ where:
 This will test the classification multiple times, each time increasing the
 input vector length. To test a specific length, and obtain the confusion
 matrix, add the `--confusion <value>` flag.
+
+### Inference
+
+The single-file inference has been run using the following command:
+```bash
+$ python3 optimization-detector.py infer -m <model> -o output.csv <path-to-file>
+```
+
+This command will divide the file in chunks of 2048 bytes each and run the 
+inference for each one. Then, the result of each chunk inference will be written
+in the file `output.csv`. 
+If the `-o output.csv` part is omitted, the average will be reported in stdout.
+
+## Pre-Trained Models
+Pre-trained models for every architecture in our dataset can be downloaded from
+the [following link](https://sel.ist.osaka-u.ac.jp/people/davidepi/models/).
+
+Note that LSTM models always provide better accuracy (4.5% better on average), 
+while CNN models provide faster inference (2x-4x faster).
 
 ## Authors
 
