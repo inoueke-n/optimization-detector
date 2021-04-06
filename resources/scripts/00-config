@@ -1,0 +1,6 @@
+#!/bin/bash
+mkdir -pv $1/usr/{bin,lib,include}
+mkdir -pv $1/bin
+mkdir -pv $1/etc
+mkdir -pv $1/lib
+ln -s lib $1/lib64

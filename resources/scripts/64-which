@@ -1,0 +1,8 @@
+#!/bin/bash
+tar xf which-2.21.tar.gz
+cd which-2.21
+./configure --prefix=$1/usr --host=$4
+make -j$2
+make install
+cd ..
+rm -rf which-2.21

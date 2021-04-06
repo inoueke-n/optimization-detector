@@ -1,0 +1,14 @@
+#!/bin/bash
+tar xf readline-8.0.tar.gz
+cd readline-8.0
+sed -i '/MV.*old/d' Makefile.in
+sed -i '/{OLDSUFF}/c:' support/shlib-install
+CFLAGS="$CFLAGS --sysroot=$1" LDFLAGS="--sysroot=$1" ./configure --prefix=$1/usr --disable-static --disable-doc --host=$4
+make SHLIB_LIBS="-lncursesw" -j$2
+make SHLIB_LIBS="-lncursesw" install
+mv -v $1/usr/lib/lib{readline,history}.so.* $1/lib
+chmod -v u+w $1/lib/lib{readline,history}.so.*
+ln -sfv ../../lib/$(readlink $1/usr/lib/libreadline.so) $1/usr/lib/libreadline.so
+ln -sfv ../../lib/$(readlink $1/usr/lib/libhistory.so ) $1/usr/lib/libhistory.so
+cd ..
+rm -rf readline-8.0

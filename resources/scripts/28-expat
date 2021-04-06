@@ -1,0 +1,10 @@
+#!/bin/bash
+tar xf expat-2.2.9.tar.xz 
+cd expat-2.2.9
+sed -i 's|usr/bin/env |bin/|' run.sh.in
+./configure --prefix=$1/usr --disable-static --host=$4
+make -j$2
+make install
+cd ..
+rm -rf expat-2.2.9
+

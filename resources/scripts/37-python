@@ -1,0 +1,17 @@
+#!/bin/bash
+tar xf Python-3.8.1.tar.xz
+cd Python-3.8.1
+cat > config.site << "EOF"
+ac_cv_file__dev_ptmx=no
+ac_cv_file__dev_ptc=no
+EOF
+CFLAGS="$CFLAGS -I$1/usr/include --sysroot=$1" LDFLAGS="$LDFLAGS --sysroot=$1" CONFIG_SITE=config.site ./configure --prefix=$1/usr --enable-shared --with-system-expat --with-system-ffi --with-ensurepip=no --host=$4 --build=$(uname -m)-linux-gnu --disable-ipv6
+sed -i "s@OPENSSL_INCLUDES=.*@OPENSSL_INCLUDES=-I$1/usr/include@g" Makefile
+sed -i "s@OPENSSL_LDFLAGS=.*@OPENSSL_LDFLAGS=-L$1/usr/lib@g" Makefile
+sed -ie "s/O3/O$3/g" Makefile
+make -j$2
+make install
+cd ..
+rm -rf Python-3.8.1
+
+

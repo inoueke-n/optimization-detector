@@ -1,0 +1,9 @@
+#!/bin/bash
+tar xf bc-2.5.3.tar.gz
+cd bc-2.5.3
+PREFIX=$1/usr HOSTCC=gcc HOSTCFLAGS=$CFLAGS CFLAGS="$CFLAGS -std=c99" ./configure.sh -G -M -N -O$3
+make -j$2
+make install
+cd ..
+rm -rf bc-2.5.3
+

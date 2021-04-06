@@ -1,0 +1,10 @@
+#!/bin/bash
+tar xf make-4.3.tar.gz
+cd make-4.3
+./configure --prefix=$1/usr --host=$4
+make -j$2
+make install
+cd ..
+rm -rf make-4.3
+
+

@@ -1,0 +1,14 @@
+#!/bin/bash
+tar xf kbd-2.2.0.tar.xz
+cd kbd-2.2.0
+patch -Np1 -i ../kbd-2.2.0-backspace-1.patch
+sed -i 's/\(RESIZECONS_PROGS=\)yes/\1no/g' configure
+sed -i 's/resizecons.8 //' docs/man/man8/Makefile.in
+./configure --prefix=$1/usr --disable-vlock --host=$4
+sed -ie "s/O2/O$3/g" Makefile
+make -j$2
+make install
+cd ..
+rm -rf kbd-2.2.0
+
+

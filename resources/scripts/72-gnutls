@@ -1,0 +1,8 @@
+#!/bin/bash
+tar xf gnutls-3.6.12.tar.xz
+cd gnutls-3.6.12
+CFLAGS="$CFLAGS -L$1/usr/lib -L$1/lib" LDFLAGS="-L$1/usr/lib -L$1/lib" ./configure --prefix=$1/usr --disable-guile --without-p11-kit --host=$4 --enable-openssl-compatibility --with-included-libtasn1 --with-included-unistring
+make -j$2
+make install
+cd ..
+rm -rf gnutls-3.6.12

@@ -1,0 +1,13 @@
+#!/bin/bash
+tar xf gawk-5.0.1.tar.xz 
+cd gawk-5.0.1
+sed -i 's/extras//' Makefile.in
+./configure --prefix=$1/usr --host=$4
+make -j$2
+make install
+mkdir -v $1/usr/share/doc/gawk-5.0.1
+cp -v doc/{awkforai.txt,*.{eps,pdf,jpg}} $1/usr/share/doc/gawk-5.0.1
+cd ..
+rm -rf gawk-5.0.1
+
+

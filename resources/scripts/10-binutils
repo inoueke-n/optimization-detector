@@ -1,0 +1,14 @@
+#!/bin/bash
+tar xf binutils-2.34.tar.xz
+cd binutils-2.34
+sed -i '/@\tincremental_copy/d' gold/testsuite/Makefile.in
+mkdir -v build
+cd build
+../configure --prefix=$1/usr --enable-gold --enable-ld=default --enable-plugins --enable-shared --disable-werror --enable-64-bit-bfd --host=$4
+sed -ie "s/O2/O$3/g" Makefile
+make tooldir=$1/usr -j$2
+make tooldir=$1/usr install
+cd ..
+cd ..
+rm -rf binutils-2.34
+

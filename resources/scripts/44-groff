@@ -1,0 +1,11 @@
+#!/bin/bash
+tar xf groff-1.22.4.tar.gz 
+cd groff-1.22.4
+# groff tries to build the doc with the newly built program (and fails when cross compiling, hence the --with-doc=no)
+PAGE=A4 ./configure --prefix=$1/usr --host=$4 --with-doc=no
+make -j1
+make install
+cd ..
+rm -rf groff-1.22.4
+
+

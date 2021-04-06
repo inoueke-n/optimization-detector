@@ -1,0 +1,8 @@
+#!/bin/bash
+tar xf zlib-1.2.11.tar.xz
+cd zlib-1.2.11
+./configure --prefix=$1/usr
+make -j$2
+make install
+cd ..
+rm -rvf zlib-1.2.11

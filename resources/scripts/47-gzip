@@ -1,0 +1,11 @@
+#!/bin/bash
+tar xf gzip-1.10.tar.xz 
+cd gzip-1.10
+./configure --prefix=$1/usr --host=$4
+make -j$2
+make install
+mv -v $1/usr/bin/gzip $1/bin
+cd ..
+rm -rf gzip-1.10
+
+

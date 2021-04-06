@@ -1,0 +1,19 @@
+#!/bin/bash
+tar xf gcc-9.2.0.tar.xz
+tar xf gmp-6.2.0.tar.xz -C gcc-9.2.0
+tar xf mpfr-4.0.2.tar.xz -C gcc-9.2.0
+tar xf mpc-1.1.0.tar.gz -C gcc-9.2.0
+cd gcc-9.2.0
+mv -v gmp-6.2.0 gmp
+mv -v mpfr-4.0.2 mpfr
+mv -v mpc-1.1.0 mpc
+mkdir -v build
+cd build
+../configure --prefix=$1/usr --enable-languages=c,c++ --disable-bootstrap --disable-multilib --host=$4 --with-sysroot=$1 --with-native-system-header-dir=/usr/include --target=$4
+sed -ie "s/O2/O$3/g" Makefile
+make -j$2
+make install
+install -v -dm755 $1/usr/lib/bfd-plugins
+cd ../..
+rm -rf gcc-9.2.0
+

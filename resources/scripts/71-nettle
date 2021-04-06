@@ -1,0 +1,8 @@
+#!/bin/bash
+tar xf nettle-3.5.1.tar.gz
+cd nettle-3.5.1
+./configure --prefix=$1/usr --disable-static --host=$4 --enable-mini-gmp
+make -j$2
+make install
+cd ..
+rm -rf nettle-3.5.1

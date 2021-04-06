@@ -1,0 +1,10 @@
+#!/bin/bash
+tar xf grub-2.04.tar.xz 
+cd grub-2.04
+./configure --prefix=$1/usr --sbindir=$1/sbin --sysconfdir=$1/etc --disable-efiemu --disable-werror --host=$4
+make -j$2
+make install
+cd ..
+rm -rf grub-2.04
+
+

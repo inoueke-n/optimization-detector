@@ -1,0 +1,14 @@
+#!/bin/bash
+tar xf util-linux-2.35.1.tar.xz 
+cd util-linux-2.35.1
+mkdir -pv $1/var/lib/hwclock
+rm -vf $1/usr/include/{blkid,libmount,uuid}
+CFLAGS="$CFLAGS -I$1/usr/include -L$1/usr/lib" ./configure ADJTIME_PATH=$1/var/lib/hwclock/adjtime --disable-chfn-chsh --disable-login --disable-nologin --disable-su --disable-setpriv --disable-runuser --disable-pylibmount --disable-static --without-python --prefix=$1 --with-bashcompletiondir=$1/usr/share/bash-completion/completions --host=$4
+sed -i '/chgrp tty.*/d' Makefile # chgrp fails otherwise (and we don't want to use sudo)
+sed -i '/chown root:root.*/d' Makefile # chown root:root fails otherwise (and we don't want to use sudo)
+make -j$2
+make install
+cd ..
+rm -rf util-linux-2.35.1
+
+

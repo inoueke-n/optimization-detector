@@ -1,0 +1,10 @@
+#!/bin/bash
+tar xf ffmpeg-4.2.2.tar.xz
+cd ffmpeg-4.2.2
+ARCH=$(echo $4 | sed 's/\([^-]\+\)-\([^-]\+\)-[^-]\+/\1/g')
+TGT_OS=$(echo $4 | sed 's/\([^-]\+\)-\([^-]\+\)-[^-]\+/\2/g')
+./configure --prefix=$1/usr --arch=$ARCH --target-os=$TGT_OS --cross-prefix=$4- --enable-gpl --enable-version3 --enable-nonfree --disable-static --enable-shared --disable-debug --docdir=$1/usr/share/doc/ffmpeg-4.3.1
+make -j$2
+make install
+cd ..
+rm -rf ffmpeg-4.2.2

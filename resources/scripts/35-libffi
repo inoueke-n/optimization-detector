@@ -1,0 +1,10 @@
+#!/bin/bash
+tar xf libffi-3.3.tar.gz
+cd libffi-3.3
+./configure --prefix=$1/usr --disable-static --host=$4
+make -j$2
+make install
+cd ..
+rm -rf libffi-3.3
+
+
